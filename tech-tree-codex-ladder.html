@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Tech Tree — Codex Ladder (vertical)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    background: #efe4c9 url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2"/><feColorMatrix values="0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .26 0 0 0 .05 0"/></filter><rect width="140" height="140" filter="url(%23n)"/></svg>');
+    color: #3a2c17;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 0 60px;
+  }
+  header.masthead {
+    width: 100%; background: #2b1d12; color: #f0e4c8;
+    border-bottom: 4px double #8c6d3f;
+    text-align: center; padding: 26px 20px 22px; margin-bottom: 34px;
+  }
+  header.masthead h1 { font-size: 26px; letter-spacing: .04em; font-weight: 700; }
+  header.masthead .sub { margin-top: 6px; font-size: 13px; color: #cbb98f; font-style: italic; }
+  .frame { position: relative; }
+  .canvas { position: relative; }
+  svg.edges { position: absolute; inset: 0; pointer-events: none; }
+  /* era bands */
+  .band { position: absolute; left: 0; right: 0; pointer-events: none; }
+  .band.tint { background: rgba(140,109,63,.055); }
+  .rung-label {
+    position: absolute; left: 50%; transform: translateX(-50%); z-index: 6;
+    background: linear-gradient(180deg,#fdf7e6,#efe2c0);
+    border: 1px solid #b49a63; border-radius: 3px;
+    padding: 4px 22px; font-size: 11.5px; font-weight: 700;
+    letter-spacing: .26em; text-transform: uppercase; color: #7a6136;
+    box-shadow: 0 2px 5px rgba(80,60,20,.25); white-space: nowrap;
+  }
+  .rung-label small { display:block; text-align:center; letter-spacing:.14em; font-size: 9px; color:#a2884f; font-weight: 400; margin-top: 1px; }
+  .node { position: absolute; width: 150px; text-align: center; cursor: default; transition: opacity .18s, transform .18s; }
+  .node .medal {
+    width: 58px; height: 58px; margin: 0 auto 5px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fdf7e6, #efe2c0 60%, #e2d1a6);
+    border: 3px solid var(--c); outline: 1px solid #b49a63; outline-offset: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; box-shadow: 0 2px 6px rgba(80,60,20,.35);
+  }
+  .node .tierlab { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: #8a7343; }
+  .node .nm { font-size: 12.5px; font-weight: 700; line-height: 1.22; color: #3a2c17; }
+  .node.capstone .medal { width: 70px; height: 70px; border-width: 4px; outline: 2px double #a2803f; font-size: 27px; }
+  .dim { opacity: .16; }
+  .lit { transform: scale(1.04); }
+  .tip {
+    position: absolute; z-index: 50; max-width: 250px; font-size: 12px; line-height: 1.5;
+    padding: 10px 13px; border-radius: 6px; pointer-events: none; display: none;
+    background: #fbf3dd; border: 1px solid #b49a63; color: #4a3a20;
+    box-shadow: 0 6px 18px rgba(80,60,20,.35);
+  }
+  .legend { margin-top: 22px; display: flex; gap: 22px; font-size: 12.5px; color: #6d5a34; align-items: center; }
+  .legend .sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 7px; vertical-align: -1.5px; border: 1px solid #8c6d3f; }
+  .hint { margin-top: 10px; font-size: 12px; font-style: italic; color: #8a7343; }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1>The AI Tech Tree — Codex Ladder</h1>
+  <div class="sub">Climb from the Chat Age to the Frontier · each rung unlocks the next · hover a node to trace its lineage</div>
+</header>
+
+<div class="frame"><div class="canvas" id="canvas"></div></div>
+
+<div class="legend" id="legend"></div>
+<div class="hint">Vertical concept mockup — same 16-node retrieval slice as before, rotated to a bottom-to-top climb.</div>
+
+<script>
+const COLORS = {F:'#BE123C', R:'#0D9488', A:'#4F46E5'};
+const BRANCH_NAMES = {F:'Foundations', R:'Search & Retrieval', A:'Agents'};
+
+// level = rung height (0 = bottom of the ladder), lane = horizontal rail 0..3
+const NODES = [
+  {id:'R1',  name:'Using semantic search',      br:'R', level:0, lane:0, tier:1, icon:'🔍', d:'Recognizing meaning-based search in everyday apps — it finds ideas, not just keywords.'},
+  {id:'R2',  name:'Using a RAG product',        br:'R', level:0, lane:2, tier:1, icon:'📄', d:'Q&A over your own documents (NotebookLM-style); judging whether answers are grounded.'},
+  {id:'F4',  name:'Tokens & context windows',   br:'F', level:0, lane:3, tier:1, icon:'🧠', d:'The model’s finite working memory — the cost unit of everything downstream.'},
+  {id:'R3',  name:'Keyword vs semantic',        br:'R', level:1, lane:0, tier:2, icon:'⚖️', d:'When exact match (grep) beats meaning match, and vice versa.'},
+  {id:'R4',  name:'What embeddings are',        br:'R', level:1, lane:1, tier:2, icon:'🧭', d:'Text mapped to vectors where distance ≈ similarity of meaning.'},
+  {id:'R7',  name:'First search script',        br:'R', level:2, lane:1, tier:2, icon:'📜', d:'Embed a few hundred texts and brute-force cosine search them — no database needed.'},
+  {id:'A3',  name:'The agentic loop',           br:'A', level:2, lane:3, tier:2, icon:'🔁', d:'Gather context → act via tools → verify → repeat. The heart of the agents branch.'},
+  {id:'R9',  name:'Vector databases',           br:'R', level:3, lane:0, tier:3, icon:'🗄️', d:'ANN indexes (HNSW) for searching millions of vectors fast.'},
+  {id:'R10', name:'Chunking strategies',        br:'R', level:3, lane:2, tier:3, icon:'🪓', d:'Splitting documents well — bad chunks are the #1 RAG failure mode.'},
+  {id:'R11', name:'Basic RAG pipeline',         br:'R', level:4, lane:1, tier:3, icon:'⚙️', d:'Retrieve → augment → generate, with citations.'},
+  {id:'R12', name:'Hybrid search',              br:'R', level:5, lane:0, tier:3, icon:'🔀', d:'Dense + BM25 + filters fused with RRF — the 2026 default baseline.'},
+  {id:'R18', name:'RAG evaluation',             br:'R', level:5, lane:2, tier:4, icon:'📏', d:'Faithfulness, precision/recall, golden datasets — the gate to every advanced technique.'},
+  {id:'R22', name:'Agentic RAG',                br:'R', level:6, lane:2, tier:5, icon:'🤖', d:'The LLM plans retrieval: decides if/what/where, grades results, retries.'},
+  {id:'R23', name:'Agentic search',             br:'R', level:7, lane:0, tier:5, icon:'🐚', d:'Agents grepping live data instead of pre-built indexes; knowing when each wins.'},
+  {id:'R24', name:'Retrieval strategy mastery', br:'R', level:7, lane:2, tier:5, icon:'👑', capstone:true, d:'Capstone: RAG vs long context vs hybrid — "naive RAG is dead, retrieval is not."'},
+];
+// [from, to, routing]  routing: 'rail-left' hugs the outer left rail; {bow:+n} pushes control points sideways
+const EDGES = [
+  ['R1','R3'], ['R3','R4','side'], ['R4','R7'], ['F4','A3'],
+  ['R7','R9'], ['R7','R10'], ['R9','R11'], ['R10','R11'],
+  ['R11','R12'], ['R11','R18'], ['R18','R22'], ['A3','R22',{bow:70}],
+  ['R22','R23'], ['R3','R23','rail-left'], ['R22','R24'],
+];
+// Rungs bottom → top
+const RUNGS = [
+  {roman:'I',   label:'Chat Age',  levels:[0,1]},
+  {roman:'II',  label:'Tool Age',  levels:[2,3,4]},
+  {roman:'III', label:'Agent Age', levels:[5,6]},
+  {roman:'IV',  label:'Frontier',  levels:[7]},
+];
+
+const W = 900, LANE_X = [115, 335, 555, 775], LEVEL_H = 142, BAND_LABEL_H = 52, TOP_PAD = 8;
+// Build y positions top-down (Frontier first)
+const levelY = {};
+let cursor = TOP_PAD;
+const bands = [];
+[...RUNGS].reverse().forEach((r, idx)=>{
+  const bandTop = cursor;
+  cursor += BAND_LABEL_H;
+  const lvls = [...r.levels].sort((a,b)=>b-a); // high levels first within band
+  lvls.forEach(L=>{ levelY[L] = cursor + 18; cursor += LEVEL_H; });
+  bands.push({...r, top: bandTop, bottom: cursor, tint: idx % 2 === 1});
+});
+const H = cursor + 10;
+
+const canvas = document.getElementById('canvas');
+canvas.style.width = W+'px'; canvas.style.height = H+'px';
+
+// era bands + rung labels + ladder rails
+bands.forEach((b,i)=>{
+  const band = document.createElement('div');
+  band.className = 'band' + (b.tint?' tint':'');
+  band.style.top = b.top+'px'; band.style.height = (b.bottom-b.top)+'px';
+  if (i>0) band.style.borderTop = '3px double #b49a63';
+  canvas.appendChild(band);
+  const lab = document.createElement('div');
+  lab.className = 'rung-label';
+  lab.style.top = (b.top+10)+'px';
+  lab.innerHTML = `Rung ${b.roman} · ${b.label}<small>${i===bands.length-1?'start here — climb upward':''}${i===0?'the top of the ladder':''}</small>`;
+  canvas.appendChild(lab);
+});
+
+// SVG edges + rails
+const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+svg.setAttribute('class','edges'); svg.setAttribute('width',W); svg.setAttribute('height',H);
+canvas.appendChild(svg);
+// ladder side rails
+[14, W-14].forEach(x=>{
+  const rail = document.createElementNS('http://www.w3.org/2000/svg','path');
+  rail.setAttribute('d',`M ${x} 6 L ${x} ${H-6}`);
+  rail.setAttribute('stroke','#b49a63'); rail.setAttribute('stroke-width','2.5'); rail.setAttribute('fill','none');
+  const rail2 = document.createElementNS('http://www.w3.org/2000/svg','path');
+  rail2.setAttribute('d',`M ${x + (x<100?5:-5)} 6 L ${x + (x<100?5:-5)} ${H-6}`);
+  rail2.setAttribute('stroke','#cdb586'); rail2.setAttribute('stroke-width','1'); rail2.setAttribute('fill','none');
+  svg.appendChild(rail); svg.appendChild(rail2);
+});
+
+const byId = Object.fromEntries(NODES.map(n=>[n.id,n]));
+function medalC(n){ // medal center
+  return { x: LANE_X[n.lane], y: levelY[n.level] + (n.capstone?35:29) + 12 };
+}
+const EDGE_C = '#a8905f', EDGE_LIT = '#7c3aed';
+const edgeEls = {};
+EDGES.forEach(e=>{
+  const [a,b,route] = e;
+  const na = byId[a], nb = byId[b];
+  const ca = medalC(na), cb = medalC(nb);
+  const ra = na.capstone?35:29, rb = nb.capstone?35:29;
+  let d, tipd;
+  if (route==='side'){ // same rung, horizontal
+    const y = ca.y, x1 = ca.x + ra + 6, x2 = cb.x - rb - 8;
+    d = `M ${x1} ${y} L ${x2-4} ${y}`;
+    tipd = `M ${x2-8} ${y-4} L ${x2} ${y} L ${x2-8} ${y+4} Z`;
+  } else {
+    const x1 = ca.x, y1 = ca.y - ra - 4;           // out the top
+    const x2 = cb.x, y2 = cb.y + rb + 26;          // into the bottom (below label offset)
+    const y2m = cb.y + rb + 40;
+    let c1x = x1, c2x = x2;
+    if (route==='rail-left'){ c1x = 40; c2x = 40; }
+    else if (route && route.bow){ c1x = x1 + route.bow; c2x = x2 + route.bow; }
+    const my = (y1+y2m)/2;
+    d = `M ${x1} ${y1} C ${c1x} ${my}, ${c2x} ${my}, ${x2} ${y2m+2} L ${x2} ${y2m}`;
+    tipd = `M ${x2-4} ${y2m+8} L ${x2} ${y2m} L ${x2+4} ${y2m+8} Z`;
+  }
+  const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d',d); p.setAttribute('fill','none');
+  p.setAttribute('stroke',EDGE_C); p.setAttribute('stroke-width','1.7'); p.setAttribute('stroke-dasharray','5 3');
+  const tip = document.createElementNS('http://www.w3.org/2000/svg','path');
+  tip.setAttribute('d',tipd); tip.setAttribute('fill',EDGE_C);
+  svg.appendChild(p); svg.appendChild(tip);
+  edgeEls[a+'>'+b] = [p,tip];
+});
+
+// lineage maps
+const ancestors = {}, descendants = {};
+NODES.forEach(n=>{ancestors[n.id]=new Set(); descendants[n.id]=new Set();});
+function collect(id,set,dir){
+  EDGES.forEach(([a,b])=>{
+    if (dir==='up' && b===id && !set.has(a)){ set.add(a); collect(a,set,'up'); }
+    if (dir==='down' && a===id && !set.has(b)){ set.add(b); collect(b,set,'down'); }
+  });
+}
+NODES.forEach(n=>{ collect(n.id,ancestors[n.id],'up'); collect(n.id,descendants[n.id],'down'); });
+
+const tipEl = document.createElement('div'); tipEl.className='tip'; canvas.appendChild(tipEl);
+
+const nodeEls = {};
+NODES.forEach(n=>{
+  const el = document.createElement('div');
+  el.className = 'node' + (n.capstone?' capstone':'');
+  el.style.left = (LANE_X[n.lane]-75)+'px';
+  el.style.top  = levelY[n.level]+'px';
+  el.style.setProperty('--c', COLORS[n.br]);
+  const tierTxt = n.capstone ? '★ Capstone' : 'Tier '+n.tier;
+  el.innerHTML = `<div class="medal">${n.icon}</div><div class="tierlab">${tierTxt}</div><div class="nm">${n.name}</div>`;
+  canvas.appendChild(el);
+  nodeEls[n.id] = el;
+
+  el.addEventListener('mouseenter', ()=>{
+    const keep = new Set([n.id, ...ancestors[n.id], ...descendants[n.id]]);
+    NODES.forEach(m=>{
+      nodeEls[m.id].classList.toggle('dim', !keep.has(m.id));
+      nodeEls[m.id].classList.toggle('lit', keep.has(m.id));
+    });
+    EDGES.forEach(([a,b])=>{
+      const on = keep.has(a) && keep.has(b);
+      const [p,t] = edgeEls[a+'>'+b];
+      p.setAttribute('stroke', on?EDGE_LIT:EDGE_C);
+      p.setAttribute('stroke-width', on?'2.6':'1.7');
+      t.setAttribute('fill', on?EDGE_LIT:EDGE_C);
+      p.style.opacity = t.style.opacity = on?1:.14;
+    });
+    tipEl.style.display='block';
+    tipEl.innerHTML = `<b>${n.name}</b> <span style="color:#8a7343">· ${BRANCH_NAMES[n.br]}</span><br>${n.d}`;
+    const nx = LANE_X[n.lane], ny = levelY[n.level];
+    tipEl.style.left = Math.max(10, Math.min(nx+50, W-270))+'px';
+    tipEl.style.top  = Math.max(6, ny-64)+'px';
+  });
+  el.addEventListener('mouseleave', ()=>{
+    NODES.forEach(m=>nodeEls[m.id].classList.remove('dim','lit'));
+    EDGES.forEach(([a,b])=>{
+      const [p,t] = edgeEls[a+'>'+b];
+      p.setAttribute('stroke',EDGE_C); p.setAttribute('stroke-width','1.7');
+      t.setAttribute('fill',EDGE_C); p.style.opacity = t.style.opacity = 1;
+    });
+    tipEl.style.display='none';
+  });
+});
+
+document.getElementById('legend').innerHTML =
+  Object.entries(BRANCH_NAMES).map(([k,v])=>
+    `<span><span class="sw" style="background:${COLORS[k]}"></span>${v}</span>`).join('');
+</script>
+</body>
+</html>

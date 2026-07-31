@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Tech Tree — Style Direction Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #17181c; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #e8e8ea; padding: 32px 24px 64px; }
+  .intro { max-width: 900px; margin: 0 auto 40px; }
+  .intro h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+  .intro p { color: #a9abb3; font-size: 14.5px; line-height: 1.55; }
+  .mock { max-width: 1360px; margin: 0 auto 56px; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,0,0,.45); }
+  .mock-head { padding: 14px 22px; display: flex; align-items: baseline; gap: 14px; }
+  .mock-head .tag { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 3px 10px; border-radius: 99px; }
+  .mock-head h2 { font-size: 18px; font-weight: 700; }
+  .mock-head span.note { font-size: 12.5px; opacity: .65; }
+  .stage { position: relative; overflow-x: auto; }
+  .canvas { position: relative; }
+  svg.edges { position: absolute; inset: 0; pointer-events: none; }
+  .era { position: absolute; top: 10px; font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; text-align: center; }
+  .era-line { position: absolute; top: 34px; bottom: 14px; width: 0; border-left: 1px dashed transparent; }
+  .node { position: absolute; width: 148px; cursor: default; transition: opacity .18s, transform .18s, filter .18s; }
+  .node .nm { font-weight: 600; line-height: 1.22; }
+  .node .tierlab { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .62; }
+  .dim { opacity: .18; }
+  .lit { transform: scale(1.03); }
+  .tip { position: absolute; z-index: 50; max-width: 240px; font-size: 12px; line-height: 1.45; padding: 10px 12px; border-radius: 8px; pointer-events: none; display: none; }
+
+  /* ============ STYLE 1 — AURORA (full game aesthetic, dark) ============ */
+  .aurora { background: radial-gradient(ellipse 90% 70% at 50% -10%, #131a33 0%, #0b1020 55%, #070a16 100%); }
+  .aurora .mock-head { background: #0e1428; border-bottom: 1px solid #1d2745; color: #e6ecff; }
+  .aurora .mock-head .tag { background: #0891B2; color: #04131a; }
+  .aurora .mock-head span.note { color: #8fa0cf; }
+  .aurora .era { color: #5d6fa5; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .aurora .era-line { border-color: #212c52; }
+  .aurora .node .box {
+    padding: 9px 12px 8px; color: #dfe7ff;
+    background: linear-gradient(180deg, #141c38 0%, #0e1530 100%);
+    border: 1px solid var(--c); border-radius: 3px;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    box-shadow: 0 0 14px -2px var(--glow), inset 0 0 18px -8px var(--glow);
+  }
+  .aurora .node .nm { font-size: 12.5px; }
+  .aurora .node .tierlab { color: var(--c); font-family: ui-monospace, Menlo, monospace; opacity: 1; margin-bottom: 2px; }
+  .aurora .node.capstone .box { border-width: 2px; box-shadow: 0 0 26px -2px var(--glow), inset 0 0 24px -6px var(--glow); animation: pulse 2.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 18px -2px var(--glow), inset 0 0 20px -6px var(--glow); } 50% { box-shadow: 0 0 34px 0 var(--glow), inset 0 0 26px -4px var(--glow); } }
+  .aurora .tip { background: #0c1226; border: 1px solid #2a3763; color: #c6d2f5; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+
+  /* ============ STYLE 2 — CODEX (strategy-game parchment) ============ */
+  .codex { background: #f3e9d2 url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2"/><feColorMatrix values="0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .26 0 0 0 .05 0"/></filter><rect width="140" height="140" filter="url(%23n)"/></svg>'); }
+  .codex .mock-head { background: #2b1d12; color: #f0e4c8; border-bottom: 3px double #8c6d3f; }
+  .codex .mock-head .tag { background: #8c6d3f; color: #f6eed7; }
+  .codex .mock-head span.note { color: #cbb98f; }
+  .codex, .codex .node { font-family: Georgia, "Iowan Old Style", serif; }
+  .codex .era { color: #7a6136; letter-spacing: .22em; }
+  .codex .era-line { border-color: #d3c19b; }
+  .codex .node { width: 148px; text-align: center; }
+  .codex .node .medal {
+    width: 58px; height: 58px; margin: 0 auto 5px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fdf7e6, #efe2c0 60%, #e2d1a6);
+    border: 3px solid var(--c); outline: 1px solid #b49a63; outline-offset: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; box-shadow: 0 2px 6px rgba(80,60,20,.35);
+  }
+  .codex .node .nm { font-size: 12.5px; color: #3a2c17; }
+  .codex .node .tierlab { color: #8a7343; }
+  .codex .node.capstone .medal { width: 68px; height: 68px; border-width: 4px; outline: 2px double #a2803f; font-size: 26px; }
+  .codex .tip { background: #fbf3dd; border: 1px solid #b49a63; color: #4a3a20; box-shadow: 0 6px 18px rgba(80,60,20,.35); }
+
+  /* ============ STYLE 3 — ATLAS (clean modern infographic) ============ */
+  .atlas { background: #ffffff; }
+  .atlas .mock-head { background: #f7f8fa; border-bottom: 1px solid #e6e8ee; color: #1c2333; }
+  .atlas .mock-head .tag { background: #2563EB; color: #fff; }
+  .atlas .mock-head span.note { color: #6b7386; }
+  .atlas .era { color: #9aa1b2; }
+  .atlas .era-line { border-color: #edeff4; border-left-style: solid; }
+  .atlas .node .box {
+    padding: 9px 12px 8px; background: #fff; border: 1px solid #e3e6ec;
+    border-left: 4px solid var(--c); border-radius: 9px;
+    box-shadow: 0 1px 3px rgba(20,30,60,.08), 0 4px 14px -6px rgba(20,30,60,.12);
+    color: #1c2333;
+  }
+  .atlas .node .nm { font-size: 12.5px; }
+  .atlas .node .tierlab { color: var(--c); opacity: 1; margin-bottom: 2px; font-weight: 700; }
+  .atlas .node.capstone .box { border: 2px solid var(--c); border-left-width: 6px; }
+  .atlas .tip { background: #1c2333; color: #eef1f7; box-shadow: 0 8px 24px rgba(20,30,60,.35); }
+
+  .legend { display: flex; gap: 18px; padding: 10px 22px 16px; font-size: 12px; align-items: center; flex-wrap: wrap; }
+  .legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+  .aurora .legend { color: #8fa0cf; } .codex .legend { color: #6d5a34; } .atlas .legend { color: #6b7386; }
+</style>
+</head>
+<body data-palette="#D97706,#0891B2,#8B5CF6">
+<div class="intro">
+  <h1>AI Tech Tree — three style directions</h1>
+  <p>Same 16-node slice (retrieval branch + two cross-branch links) rendered three ways. <b>Hover any node</b> to trace its unlock lineage — prerequisites and unlocks stay lit, everything else dims. Diamond-tipped edges point toward the unlocked skill. Era columns run left → right.</p>
+</div>
+
+<div id="mocks"></div>
+
+<script>
+const NODES = [
+  {id:'R1',  name:'Using semantic search',      br:'R', col:0, row:0,   tier:1, icon:'🔍', d:'Recognizing meaning-based search in everyday apps — it finds ideas, not just keywords.'},
+  {id:'R2',  name:'Using a RAG product',        br:'R', col:0, row:1.5, tier:1, icon:'📄', d:'Q&A over your own documents (NotebookLM-style); judging whether answers are grounded.'},
+  {id:'F4',  name:'Tokens & context windows',   br:'F', col:0, row:3.1, tier:1, icon:'🧠', d:'The model’s finite working memory — the cost unit of everything downstream.'},
+  {id:'R3',  name:'Keyword vs semantic',        br:'R', col:1, row:0.4, tier:2, icon:'⚖️', d:'When exact match (grep) beats meaning match, and vice versa.'},
+  {id:'R4',  name:'What embeddings are',        br:'R', col:1, row:1.9, tier:2, icon:'🧭', d:'Text mapped to vectors where distance ≈ similarity of meaning.'},
+  {id:'R7',  name:'First search script',        br:'R', col:2, row:1.3, tier:2, icon:'📜', d:'Embed a few hundred texts and brute-force cosine search them — no database needed.'},
+  {id:'A3',  name:'The agentic loop',           br:'A', col:2, row:3.1, tier:2, icon:'🔁', d:'Gather context → act via tools → verify → repeat. The heart of the agents branch.'},
+  {id:'R9',  name:'Vector databases',           br:'R', col:3, row:0.5, tier:3, icon:'🗄️', d:'ANN indexes (HNSW) for searching millions of vectors fast.'},
+  {id:'R10', name:'Chunking strategies',        br:'R', col:3, row:2.1, tier:3, icon:'🪓', d:'Splitting documents well — bad chunks are the #1 RAG failure mode.'},
+  {id:'R11', name:'Basic RAG pipeline',         br:'R', col:4, row:1.3, tier:3, icon:'⚙️', d:'Retrieve → augment → generate, with citations.'},
+  {id:'R12', name:'Hybrid search',              br:'R', col:5, row:0.3, tier:3, icon:'🔀', d:'Dense + BM25 + filters fused with RRF — the 2026 default baseline.'},
+  {id:'R18', name:'RAG evaluation',             br:'R', col:5, row:1.9, tier:4, icon:'📏', d:'Faithfulness, precision/recall, golden datasets — the gate to every advanced technique.'},
+  {id:'R22', name:'Agentic RAG',                br:'R', col:6, row:2.3, tier:5, icon:'🤖', d:'The LLM plans retrieval: decides if/what/where, grades results, retries.'},
+  {id:'R23', name:'Agentic search',             br:'R', col:7, row:0.5, tier:5, icon:'🐚', d:'Agents grepping live data instead of pre-built indexes; knowing when each wins.'},
+  {id:'R24', name:'Retrieval strategy mastery', br:'R', col:7, row:2.3, tier:5, icon:'👑', capstone:true, d:'Capstone: RAG vs long context vs hybrid — "naive RAG is dead, retrieval is not."'},
+];
+const EDGES = [['R1','R3'],['R3','R4'],['R4','R7'],['F4','A3'],['R7','R9'],['R7','R10'],
+  ['R9','R11'],['R10','R11'],['R2','R11'],['R11','R12'],['R11','R18'],
+  ['R18','R22'],['A3','R22'],['R22','R23'],['R3','R23'],['R22','R24']];
+const ERAS = [{label:'Chat Age', c0:0, c1:1},{label:'Tool Age', c0:2, c1:4},{label:'Agent Age', c0:5, c1:6},{label:'Frontier', c0:7, c1:7}];
+const BRANCH_NAMES = {F:'Foundations', R:'Search & Retrieval', A:'Agents'};
+
+const STYLES = [
+  {key:'aurora', tag:'Direction 1', title:'Aurora — full game aesthetic',
+   note:'StarCraft/PoE energy: dark space, glow, angular chips, animated capstone',
+   colors:{F:'#D97706', R:'#0891B2', A:'#8B5CF6'}, glows:{F:'#f59e0baa', R:'#22d3eeaa', A:'#a78bfaaa'},
+   edge:'#3b4a7e', edgeLit:'#7fd4ec', shape:'chip'},
+  {key:'codex', tag:'Direction 2', title:'Codex — strategy-game codex',
+   note:'Civ-style parchment, medallion nodes, engraved ink connectors',
+   colors:{F:'#BE123C', R:'#0D9488', A:'#4F46E5'}, glows:{},
+   edge:'#a8905f', edgeLit:'#7c3aed', shape:'medal'},
+  {key:'atlas', tag:'Direction 3', title:'Atlas — clean modern infographic',
+   note:'Keeps the game structure (eras, unlock edges, capstones) in a shareable flat style',
+   colors:{F:'#EA580C', R:'#0D9488', A:'#2563EB'}, glows:{},
+   edge:'#ccd2dd', edgeLit:'#1c2333', shape:'card'},
+];
+
+const COLW = 162, X0 = 26, NODEW = 148, ROWH = 92, Y0 = 56;
+function nodeXY(n, style){
+  const x = X0 + n.col*COLW;
+  const y = Y0 + n.row*ROWH;
+  return {x, y};
+}
+function anchors(n, style){
+  const {x,y} = nodeXY(n, style);
+  if (style.shape === 'medal'){
+    const cx = x + NODEW/2, cy = y + (n.capstone?34:29) + 3;
+    return {out:[cx+ (n.capstone?34:29), cy], inn:[cx-(n.capstone?34:29), cy]};
+  }
+  const h = 52;
+  return {out:[x+NODEW, y+h/2], inn:[x, y+h/2]};
+}
+
+const ancestors = {}, descendants = {};
+NODES.forEach(n=>{ancestors[n.id]=new Set(); descendants[n.id]=new Set();});
+function collect(id, map, dir){
+  EDGES.forEach(([a,b])=>{
+    if (dir==='up' && b===id && !map.has(a)){ map.add(a); collect(a,map,'up'); }
+    if (dir==='down' && a===id && !map.has(b)){ map.add(b); collect(b,map,'down'); }
+  });
+}
+NODES.forEach(n=>{ collect(n.id, ancestors[n.id],'up'); collect(n.id, descendants[n.id],'down'); });
+
+const W = X0*2 + 8*COLW, H = Y0 + 3.1*ROWH + 110;
+
+function render(style){
+  const mock = document.createElement('div');
+  mock.className = 'mock ' + style.key;
+  mock.innerHTML = `<div class="mock-head"><span class="tag">${style.tag}</span><h2>${style.title}</h2><span class="note">${style.note}</span></div>`;
+  const stage = document.createElement('div'); stage.className='stage';
+  const canvas = document.createElement('div'); canvas.className='canvas';
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+
+  // eras
+  ERAS.forEach((e,i)=>{
+    const left = X0 + e.c0*COLW, right = X0 + (e.c1+1)*COLW;
+    const el = document.createElement('div'); el.className='era';
+    el.style.left = left+'px'; el.style.width = (right-left)+'px';
+    el.textContent = e.label; canvas.appendChild(el);
+    if (i>0){ const ln = document.createElement('div'); ln.className='era-line'; ln.style.left=(left-7)+'px'; canvas.appendChild(ln); }
+  });
+
+  // edges
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','edges'); svg.setAttribute('width',W); svg.setAttribute('height',H);
+  const edgeEls = {};
+  EDGES.forEach(([a,b])=>{
+    const na = NODES.find(n=>n.id===a), nb = NODES.find(n=>n.id===b);
+    const [x1,y1] = anchors(na,style).out, [x2,y2] = anchors(nb,style).inn;
+    const mx = (x1+x2)/2;
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2-8} ${y2}`);
+    p.setAttribute('fill','none');
+    p.setAttribute('stroke', style.edge);
+    p.setAttribute('stroke-width', style.key==='codex'?1.6:1.5);
+    if (style.key==='codex') p.setAttribute('stroke-dasharray','5 3');
+    const tip = document.createElementNS('http://www.w3.org/2000/svg','path');
+    tip.setAttribute('d',`M ${x2-9} ${y2-4} L ${x2-1} ${y2} L ${x2-9} ${y2+4} Z`);
+    tip.setAttribute('fill', style.edge);
+    svg.appendChild(p); svg.appendChild(tip);
+    edgeEls[a+'>'+b] = [p,tip];
+  });
+  canvas.appendChild(svg);
+
+  // tooltip
+  const tip = document.createElement('div'); tip.className='tip'; canvas.appendChild(tip);
+
+  // nodes
+  const nodeEls = {};
+  NODES.forEach(n=>{
+    const {x,y} = nodeXY(n,style);
+    const el = document.createElement('div');
+    el.className = 'node' + (n.capstone?' capstone':'');
+    el.style.left = x+'px'; el.style.top = y+'px';
+    el.style.setProperty('--c', style.colors[n.br]);
+    if (style.glows[n.br]) el.style.setProperty('--glow', style.glows[n.br]);
+    const tierTxt = (n.capstone?'★ Capstone':'Tier '+n.tier);
+    if (style.shape==='medal'){
+      el.innerHTML = `<div class="medal">${n.icon}</div><div class="tierlab">${tierTxt}</div><div class="nm">${n.name}</div>`;
+    } else {
+      el.innerHTML = `<div class="box"><div class="tierlab">${tierTxt} · ${BRANCH_NAMES[n.br]}</div><div class="nm">${(n.capstone?'★ ':'')}${n.name}</div></div>`;
+    }
+    canvas.appendChild(el);
+    nodeEls[n.id] = el;
+
+    el.addEventListener('mouseenter', ()=>{
+      const keep = new Set([n.id, ...ancestors[n.id], ...descendants[n.id]]);
+      NODES.forEach(m=>{
+        nodeEls[m.id].classList.toggle('dim', !keep.has(m.id));
+        nodeEls[m.id].classList.toggle('lit', keep.has(m.id));
+      });
+      EDGES.forEach(([a,b])=>{
+        const on = keep.has(a) && keep.has(b) &&
+          (b===n.id || a===n.id || (ancestors[n.id].has(b)) || (descendants[n.id].has(a)));
+        edgeEls[a+'>'+b].forEach(e=>{
+          e.setAttribute('stroke', on?style.edgeLit:style.edge);
+          e.setAttribute('fill', e.tagName==='path'&&e.getAttribute('fill')!=='none' ? (on?style.edgeLit:style.edge) : 'none');
+          e.style.opacity = on||keep.size===0 ? 1 : (keep.has(a)&&keep.has(b)?1:.12);
+          if (on) e.setAttribute('stroke-width','2.4');
+          else e.setAttribute('stroke-width', style.key==='codex'?'1.6':'1.5');
+        });
+      });
+      tip.style.display='block';
+      tip.innerHTML = `<b>${n.name}</b><br>${n.d}`;
+      const ty = y + (style.shape==='medal'? 100 : 60);
+      tip.style.left = Math.min(x, W-260)+'px';
+      tip.style.top = (ty > H-90 ? y-78 : ty)+'px';
+    });
+    el.addEventListener('mouseleave', ()=>{
+      NODES.forEach(m=>{ nodeEls[m.id].classList.remove('dim','lit'); });
+      EDGES.forEach(([a,b])=>{
+        edgeEls[a+'>'+b].forEach(e=>{
+          e.setAttribute('stroke', style.edge);
+          if (e.getAttribute('fill')!=='none') e.setAttribute('fill', style.edge);
+          e.style.opacity=1;
+          e.setAttribute('stroke-width', style.key==='codex'?'1.6':'1.5');
+        });
+      });
+      tip.style.display='none';
+    });
+  });
+
+  stage.appendChild(canvas);
+  mock.appendChild(stage);
+
+  const legend = document.createElement('div');
+  legend.className='legend';
+  legend.innerHTML = Object.entries(BRANCH_NAMES).map(([k,v])=>
+    `<span><span class="sw" style="background:${style.colors[k]}"></span>${v}</span>`).join('') +
+    `<span style="margin-left:auto">Hover a node to trace its unlock lineage</span>`;
+  mock.appendChild(legend);
+  document.getElementById('mocks').appendChild(mock);
+}
+STYLES.forEach(render);
+</script>
+</body>
+</html>
