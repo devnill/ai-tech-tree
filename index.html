@@ -4,22 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The AI Tech Tree</title>
+<link rel="stylesheet" href="tt.css">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
-    background: #efe4c9 url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2"/><feColorMatrix values="0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .26 0 0 0 .05 0"/></filter><rect width="140" height="140" filter="url(%23n)"/></svg>');
-    color: #3a2c17;
-  }
-  header.masthead {
-    background: #2b1d12; color: #f0e4c8; border-bottom: 4px double #8c6d3f;
-    text-align: center; padding: 24px 20px 20px;
-    position: relative;
-  }
-  header.masthead h1 { font-size: 27px; letter-spacing: .05em; font-weight: 700; }
-  header.masthead .sub { margin-top: 5px; font-size: 13px; color: #cbb98f; font-style: italic; }
   #zoomBtn {
-    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    position: absolute; right: 18px; top: 18px;
     font-family: inherit; font-size: 12px; padding: 6px 14px; cursor: pointer;
     background: #efe2c0; color: #4a3a20; border: 1px solid #8c6d3f; border-radius: 4px;
   }
@@ -34,7 +22,7 @@
     letter-spacing: .18em; text-transform: uppercase; color: var(--c);
     box-shadow: 0 2px 5px rgba(80,60,20,.22); white-space: nowrap;
   }
-  .node { position: absolute; width: 122px; text-align: center; cursor: default; transition: opacity .15s, transform .15s; z-index: 3; }
+  .node { position: absolute; width: 122px; text-align: center; cursor: pointer; transition: opacity .15s, transform .15s; z-index: 3; }
   .node .medal {
     width: 42px; height: 42px; margin: 0 auto 4px; border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #fdf7e6, #efe2c0 60%, #e2d1a6);
@@ -43,8 +31,17 @@
     font-size: 17px; box-shadow: 0 2px 5px rgba(80,60,20,.32);
   }
   .node .nm { font-size: 11px; font-weight: 700; line-height: 1.2; color: #3a2c17; }
-  .dim { opacity: .13; }
-  .lit { transform: scale(1.06); z-index: 8; }
+  .node .pips { display:flex; justify-content:center; gap:3px; margin-top:3px; height:8px; }
+  .node .pips i { width:7px; height:7px; border-radius:2px; border:1px solid var(--c); background:transparent; opacity:.55; }
+  .node .pips i.on { background: var(--c); opacity:1; }
+  /* once the trial has data, unearned skills recede */
+  body.surveyed .node.locked { opacity:.38; }
+  body.surveyed .node.locked .medal { filter: grayscale(.75); }
+  body.surveyed .node.locked:hover { opacity:.9; }
+  .node.sel .medal { outline:2px solid #2b1d12; outline-offset:3px; }
+  .dim { opacity: .13 !important; }
+  .lit { transform: scale(1.06); z-index: 8; opacity:1 !important; }
+  .lit .medal { filter:none !important; }
   .tip {
     position: absolute; z-index: 60; width: 250px; font-size: 12px; line-height: 1.5;
     padding: 10px 13px; border-radius: 6px; pointer-events: none; display: none;
@@ -56,198 +53,82 @@
   .legend { display: inline-flex; gap: 20px; font-size: 12.5px; color: #6d5a34; flex-wrap: wrap; justify-content: center; }
   .legend .sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -1.5px; border: 1px solid #8c6d3f; }
   .hint { margin-top: 9px; font-size: 12px; font-style: italic; color: #8a7343; }
+
+  .banner { text-align:center; padding: 10px; background:#e6d5ac; border-bottom:1px solid #b49a63; font-size:13.5px; }
+  .banner a { color:#2b1d12; font-weight:700; }
+
+  /* ---------- side drawer ---------- */
+  #shade { position:fixed; inset:0; background:rgba(43,29,18,.25); z-index:90; opacity:0; pointer-events:none; transition:opacity .22s; }
+  #shade.open { opacity:1; pointer-events:auto; }
+  #drawer {
+    position: fixed; top:0; right:0; height:100%; width: 420px; max-width: 94vw; z-index: 95;
+    background: #fbf3dd; border-left: 2px solid #8c6d3f; box-shadow: -10px 0 28px rgba(43,29,18,.4);
+    transform: translateX(105%); transition: transform .25s ease; overflow-y: auto;
+    padding: 22px 24px 40px;
+  }
+  #drawer.open { transform: translateX(0); }
+  #drawer .dclose { position:absolute; top:12px; right:14px; font-size:20px; background:none; border:none; cursor:pointer; color:#8a7343; font-family:inherit; }
+  #drawer .dhead { display:flex; gap:14px; align-items:center; margin: 4px 0 4px; }
+  #drawer .dmedal {
+    width: 56px; height: 56px; border-radius:50%; flex:none;
+    background: radial-gradient(circle at 35% 30%, #fdf7e6, #efe2c0 60%, #e2d1a6);
+    border: 3px solid var(--c); outline:1px solid #b49a63; outline-offset:2px;
+    display:flex; align-items:center; justify-content:center; font-size:26px;
+    box-shadow: 0 2px 6px rgba(80,60,20,.32);
+  }
+  #drawer h2 { font-size: 20px; line-height:1.2; }
+  #drawer .dsub { margin-top: 3px; }
+  #drawer h4 { font-size: 11px; letter-spacing:.16em; text-transform:uppercase; color:#6d5a34;
+               border-bottom:1px solid #d8c69c; padding-bottom:4px; margin: 20px 0 9px; }
+  #drawer p { font-size: 13.5px; line-height:1.6; color:#3a2c17; }
+  #drawer .ranks { display:flex; flex-direction:column; gap:6px; }
+  #drawer .rrow { display:flex; align-items:baseline; gap:9px; cursor:pointer; padding:6px 8px; border-radius:5px; border:1px solid transparent; }
+  #drawer .rrow:hover { background:#fff9e8; border-color:#d8c69c; }
+  #drawer .rrow .box { flex:none; width:15px; height:15px; border-radius:3px; border:1.5px solid var(--c); background:transparent; position:relative; top:2px; }
+  #drawer .rrow.on .box { background:var(--c); }
+  #drawer .rrow.on .box::after { content:'✓'; color:#fbf3dd; font-size:11px; position:absolute; top:-2px; left:2px; }
+  #drawer .rrow .rl { font-size:13px; }
+  #drawer .rrow.on .rl { font-weight:700; }
+  #drawer .rrow .rn { font-size:10.5px; color:#8a7343; flex:none; width:16px; }
+  #drawer .srcnote { font-size:11.5px; color:#8a7343; font-style:italic; margin-top:7px; }
+  #drawer .linkrow { display:flex; flex-wrap:wrap; gap:7px; }
+  #drawer .nlink { display:inline-flex; align-items:center; gap:6px; font-size:12px; text-decoration:none; color:#3a2c17;
+                   border:1px solid var(--c); border-radius:14px; padding:4px 11px 4px 7px; background:#fdf7e6; cursor:pointer; }
+  #drawer .nlink:hover { background:#fff9e8; }
+  #drawer .nlink.done { border-style:solid; }
+  #drawer .nlink.todo { opacity:.62; border-style:dashed; }
+  #drawer ul.res { list-style:none; }
+  #drawer ul.res li { margin-bottom:7px; font-size:13px; }
+  #drawer ul.res a { color:#5b4426; }
 </style>
 </head>
 <body>
 <header class="masthead">
   <h1>The AI Tech Tree</h1>
-  <div class="sub">Start at the top · every skill unlocks those beneath it · hover any node to trace its lineage</div>
+  <div class="sub">Start at the top · every skill unlocks those beneath it · click any node for the codex entry</div>
+  <div id="nav"></div>
   <button id="zoomBtn">Actual size</button>
 </header>
+<div class="banner" id="banner" style="display:none">
+  🎲 New here? <a href="quiz.html">Take the aptitude trial</a> — a few questions, and the tree lights up with what you already know.
+</div>
 <div id="viewport"><div class="canvas" id="canvas"></div></div>
 <footer>
   <div class="legend" id="legend"></div>
-  <div class="hint">Dashed lines are unlock paths; fainter lines cross between branches.</div>
+  <div class="hint">Dashed lines are unlock paths; fainter lines cross between branches. Pips under a skill are its earned ranks.</div>
 </footer>
 
+<div id="shade"></div>
+<aside id="drawer" aria-label="skill codex entry"></aside>
+
+<script src="skills-data.js"></script>
+<script src="app.js"></script>
 <script>
-const BRANCHES = [
-  {k:'F', name:'Foundations',           c:'#BE123C'},
-  {k:'U', name:'Using AI',              c:'#0369A1'},
-  {k:'P', name:'Prompt & Context',      c:'#B45309'},
-  {k:'A', name:'Agents & Harnesses',    c:'#4F46E5'},
-  {k:'R', name:'Search & Retrieval',    c:'#0D9488'},
-  {k:'M', name:'ML & Models',           c:'#9333EA'},
-];
-const MAXSLOT = {F:2, U:3, P:3, A:4, R:3, M:4};
-
-// [id, name, icon, prereqs, description]
-const RAW = {
-F: [
- ['F1','What an LLM is','🎲',[],'A probabilistic next-token predictor — not a database or a search engine.'],
- ['F2','Hallucination awareness','👻',['F1'],'Models produce confident falsehoods; fabricated citations exist.'],
- ['F3','Knowledge cutoff & recency','📅',['F1'],'Models have a training cutoff — know when to force web grounding.'],
- ['F4','Tokens & context windows','🧠',['F1'],'Finite working memory and the cost unit of everything downstream.'],
- ['F5','Verification habits','✅',['F2','F3'],'Demand sources, cross-check, test generated code before trusting it.'],
- ['F6','Privacy & safe use','🔒',['F1'],'What not to paste; consumer vs enterprise data handling.'],
- ['F7','Model landscape literacy','🗺️',['F4'],'The major model families and their speed / depth / cost trade-offs.'],
- ['F8','Reasoning & thinking modes','💭',['F7'],'Fast vs extended thinking; when to override the auto-router.'],
- ['F9','Prompt injection awareness','🛡️',['F5','U14'],'Agents reading untrusted content can be hijacked — the "lethal trifecta."'],
-],
-U: [
- ['U1','Basic chat','💬',[],'Ask, iterate, regenerate, edit prompts.'],
- ['U2','Conversational iteration','🔄',['U1'],'Refine in dialogue; request alternatives and self-critique.'],
- ['U3','Multimodal input','🎤',['U1'],'Voice conversations; uploading images, screenshots, documents.'],
- ['U4','Image & media generation','🎨',['U1'],'Generating and iterating on images and video with references.'],
- ['U5','File & data analysis','📊',['U1','F2'],'PDFs and spreadsheets via modes that compute rather than guess.'],
- ['U6','Grounded search','🌐',['F3'],'Built-in web search with citations — and actually reading them.'],
- ['U7','AI in office suites','🗂️',['U1','P1'],'Assistants inside docs, mail, sheets, and meetings.'],
- ['U8','AI notebooks','📓',['U5'],'Source-grounded notebooks: cited chat, overviews, study guides.'],
- ['U9','Deep Research mode','🔬',['U6','F5'],'Delegating multi-step cited research; auditing the sources.'],
- ['U10','Model & mode selection','🎛️',['F8','U9'],'Cheap-fast for drafts, thinking for hard problems, research for sourcing.'],
- ['U11','Custom assistants','🧰',['P8','P9'],'Packaging instructions + knowledge into reusable assistants.'],
- ['U12','AI-assisted coding','⌨️',['P1','F5'],'IDE copilots and inline chat — reviewing every suggestion.'],
- ['U13','Vibe coding','🏄',['U12'],'Building working apps from natural language; prototype-grade limits.'],
- ['U14','Connecting AI to tools','🔌',['U11','F6'],'MCP connectors to your apps; managing permissions.'],
- ['U15','Agentic coding','🖥️',['U12','P7'],'Delegating multi-file work to terminal agents; specs and diff review.'],
- ['U16','Workflow automation','🔗',['U14','P3'],'AI-in-the-loop automations: triggers, LLM steps, approval gates.'],
- ['U17','Agentic browsers','🕹️',['U10','F9'],'Delegating real web tasks; supervising, sandboxing credentials.'],
- ['U18','Personal agent orchestration','🛰️',['U15','P12'],'Scheduled and background agents running your recurring work.'],
- ['U19','Team enablement','🤝',['U11','P6'],'Sharing prompt libraries, skills, and assistants across a team.'],
-],
-P: [
- ['P1','Clear instructions','✍️',['U1'],'Task, audience, format, constraints — the context a new hire would need.'],
- ['P2','Role & persona','🎭',['P1'],'Assigning a point of view to shape tone and expertise.'],
- ['P3','Structured output','🧾',['P1'],'JSON, tables, tagged sections; delimiters separating instructions from data.'],
- ['P4','Few-shot examples','🎯',['P1'],'Examples to lock format and style — situational on reasoning models.'],
- ['P5','Decomposition & CoT','🪜',['P1'],'Manual step-by-step — and knowing when reasoning models make it redundant.'],
- ['P6','Goals & constraints','🏁',['P5','F8'],'Specify success criteria; let the model choose the reasoning path.'],
- ['P7','Context engineering','⚗️',['P3','F4'],'Curate the smallest high-signal token set; the window is scarce.'],
- ['P8','System prompts','📜',['P7'],'Persistent behavior at the right altitude — heuristics, not brittle rules.'],
- ['P9','Retrieval into context','📚',['P7','U5'],'Grounding in your own docs instead of pasting everything.'],
- ['P10','Memory management','💾',['P8'],'Curating persistent memory; knowing what is stored.'],
- ['P11','Long-horizon context','🧹',['P7'],'Compaction, scratchpads, deliberately starting fresh threads.'],
- ['P12','Multi-agent context design','🕸️',['P11','A18'],'Condensed hand-offs and context isolation across sub-agents.'],
-],
-A: [
- ['A1','Tool use','🔧',['P1'],'The model emits a typed call; your code runs it.'],
- ['A2','Structured outputs (API)','🧱',['A1'],'Constraining output to a JSON Schema.'],
- ['A3','The agentic loop','🔁',['A1'],'Gather context → act via tools → verify → repeat.'],
- ['A4','MCP fundamentals','🧩',['A1'],'The standard interface exposing tools and resources to any agent.'],
- ['A5','Building an MCP server','🛠️',['A4'],'Authoring tools with good descriptions; avoiding token bloat.'],
- ['A6','Agent skills','📁',['P8','U15'],'Procedural knowledge as progressively-loaded skill folders.'],
- ['A7','Building a single agent','🤖',['A3','A2'],'Implementing an agent with a current SDK or framework.'],
- ['A8','Loop engineering','➿',['A7'],'Verifiable goals, iteration caps, budgets, termination criteria.'],
- ['A9','Workflows vs agents','🔀',['A7'],'Deterministic pipelines vs open-ended loops — simplest that works.'],
- ['A10','Deterministic orchestration','📐',['A9'],'Control flow in code and graphs, LLM calls as steps.'],
- ['A11','Verification loops','🧪',['A8'],'Tests, linters, and judges inside the loop, not after it.'],
- ['A12','Sandboxed execution','📦',['A7'],'Containers and microVMs; filesystem and network policy.'],
- ['A13','Permissioning & HITL','✋',['A7'],'Approval gates, allowlists, escalation for irreversible actions.'],
- ['A14','Agent memory','🗃️',['P7','A7'],'Session persistence, memory files, cross-session recall.'],
- ['A15','Computer & browser use','🖱️',['A7','A12'],'Agents driving GUIs and browsers via screenshots or DOM.'],
- ['A16','Tracing & observability','📈',['A7'],'Step-level traces of tool calls, tokens, and cost.'],
- ['A17','Harness engineering','🏗️',['A8','A11','A12','A16'],'Engineering the environment around the model — Agent = Model + Harness.'],
- ['A18','Orchestrator & subagents','🎼',['A9','P7'],'A lead agent decomposes, spawns specialists, synthesizes.'],
- ['A19','Parallel agents & fleets','🐝',['A18'],'Fan-out/fan-in; knowing when parallelism pays vs hurts.'],
- ['A20','Agent-to-agent comms','📡',['A18'],'Handoffs and protocols; message-passing vs shared state.'],
- ['A21','Agent evals','🏅',['A16'],'Task success, trajectory evals, pass^k reliability.'],
- ['A22','Guardrails engineering','🚧',['A13','A5','F9'],'Policy checks, budget caps, blast-radius reduction.'],
- ['A23','Programmatic tool calling','🐍',['A5','A12'],'The agent writes code that calls tools as APIs — huge token savings.'],
- ['A24','Skill engineering at scale','🎓',['A6','A21'],'Authoring, evaluating, and distributing skills across teams.'],
- ['A25','AgentOps (CI/CD)','🚦',['A21','A10'],'Regression evals in CI, harness versioning, canary rollouts.'],
- ['A26','Long-running agents','⏳',['A17','A14'],'Hours-to-days sessions: checkpointing, triggers, self-resumption.'],
- ['A27','Ambient agent fleets','☁️',['A26','A19','A25'],'Headless cloud agents reviewed asynchronously by humans.'],
- ['A28','Self-improving harnesses','♻️',['A24','A17'],'Agents that patch their own harness from failure traces, gated by evals.'],
-],
-R: [
- ['R1','Using semantic search','🔍',[],'Meaning-based search in everyday apps — ideas, not just keywords.'],
- ['R2','Using a RAG product','📄',['R1'],'Q&A over your own documents; judging groundedness.'],
- ['R3','Keyword vs semantic','⚖️',['R1'],'When exact match (grep) beats meaning match, and vice versa.'],
- ['R4','What embeddings are','🌌',['R3'],'Text as vectors where distance ≈ similarity of meaning.'],
- ['R5','Similarity metrics','📐',['R4'],'Cosine and dot product — "how alike are these sentences," in code.'],
- ['R6','Generating embeddings','🔤',['R4'],'Embedding APIs and the sentence-transformers library.'],
- ['R7','First search script','📜',['R5','R6'],'Embed a few hundred texts, brute-force cosine search. No database.'],
- ['R8','Embedding model selection','🏆',['R6'],'MTEB literacy — but trust a small eval on your own data.'],
- ['R9','Vector databases','🗄️',['R7'],'ANN indexes for searching millions of vectors fast.'],
- ['R10','Chunking strategies','🪓',['R7'],'Splitting documents well — the #1 RAG failure mode.'],
- ['R11','Basic RAG pipeline','⚙️',['R9','R10','P3'],'Retrieve → augment → generate, with citations.'],
- ['R12','Hybrid search','🔗',['R11'],'Dense + BM25 + filters fused with RRF — the default baseline.'],
- ['R13','Rerankers','🥇',['R12'],'Second-stage precision with cross-encoders or late interaction.'],
- ['R14','Embeddings beyond search','🧿',['R5'],'Clustering, classification, dedup, recommendations, anomalies.'],
- ['R15','Query transformation','❓',['R11'],'Rewriting, multi-query, HyDE — fixing bad queries before retrieval.'],
- ['R16','Contextual retrieval','🧩',['R10','R13'],'LLM-generated chunk context; late chunking with long-context embedders.'],
- ['R17','Structural & graph retrieval','🗺️',['R11'],'Parent-document, RAPTOR hierarchies, GraphRAG for multi-hop.'],
- ['R18','RAG evaluation','📏',['R11'],'Faithfulness, precision/recall, golden datasets — the gate to everything advanced.'],
- ['R19','Multimodal retrieval','🖼️',['R8','R11'],'PDFs-as-images, tables, diagrams — "you can\'t grep a diagram."'],
- ['R20','Fine-tuning embedders','🎚️',['R8','R18'],'Domain adaptation via contrastive training with hard negatives.'],
- ['R21','Production retrieval ops','🏭',['R11'],'Index freshness, versioning, latency budgets, semantic caching.'],
- ['R22','Agentic RAG','🦾',['R15','R18','A3'],'The LLM plans retrieval: decides if/what/where, grades, retries.'],
- ['R23','Agentic search','🐚',['R22','R3'],'Agents grepping live data instead of pre-built indexes.'],
- ['R24','Retrieval strategy mastery','👑',['R22','R21'],'RAG vs long context vs hybrid — "naive RAG is dead, retrieval is not."'],
-],
-M: [
- ['M1','Python data stack','🐼',[],'NumPy, pandas, and notebooks for shaping data.'],
- ['M2','ML problem framing','🧮',[],'Supervised vs unsupervised vs RL — is this even ML-shaped?'],
- ['M3','Regression & classification','📉',['M1','M2'],'scikit-learn fit/predict on the classic models.'],
- ['M4','Evaluation discipline','🧪',['M3'],'Splits, cross-validation, leakage, baselines before models.'],
- ['M5','Feature engineering','🛠',['M3'],'Encodings, scaling, domain features — still decisive on tabular data.'],
- ['M6','Gradient boosting','🌲',['M4','M5'],'XGBoost/LightGBM — the reigning tabular default.'],
- ['M7','Unsupervised learning','🌀',['M1','M2'],'Clustering, PCA/UMAP, anomalies — the bridge to embeddings.'],
- ['M8','Neural nets & backprop','🕸',['M3'],'Layers, losses, gradient descent — differentiable programs.'],
- ['M9','PyTorch fluency','🔥',['M8'],'Tensors, autograd, training loops.'],
- ['M10','Tokenization','🔡',['M8','F4'],'BPE subwords; token-cost failure modes.'],
- ['M11','Running local models','💻',['F7'],'Ollama and llama.cpp; matching model size to hardware.'],
- ['M12','Hugging Face ecosystem','🤗',['M9'],'The Hub, model cards, pipelines, license literacy.'],
- ['M13','Classical vs LLM judgment','🥊',['M6','M4'],'When a $0.0001 XGBoost model beats an LLM.'],
- ['M14','Training dynamics','🌡️',['M9'],'Optimizers, schedules, overfitting diagnosis, loss curves.'],
- ['M15','Transformer architecture','✨',['M9','M10'],'Self-attention, RoPE, KV cache — the hub of the deep branch.'],
- ['M16','Quantization','🗜️',['M11'],'GGUF and 4/8-bit trade-offs; formats for GPU serving.'],
- ['M17','Open-model landscape','🌍',['M11','M12'],'Current open-weight families; benchmark skepticism.'],
- ['M18','Adaptation strategy','🧭',['M17','M4'],'Prompt vs RAG vs fine-tune: "fine-tuning is for form, not facts."'],
- ['M19','SFT & instruction tuning','📖',['M18','M15'],'Chat templates; small curated datasets beat big scraped ones.'],
- ['M20','LoRA & QLoRA','🪶',['M19','M16'],'Low-rank adapters — realistic single-GPU fine-tuning.'],
- ['M21','Serving stacks','🚀',['M11','M16'],'vLLM/SGLang; OpenAI-compatible endpoints; throughput vs latency.'],
- ['M22','Benchmark literacy','📊',['M17'],'Saturation, contamination, and the current differentiators.'],
- ['M23','Pretraining & scaling laws','⛰️',['M15','M14'],'Why pure pretraining scaling plateaued.'],
- ['M24','Preference optimization','👍',['M19'],'DPO-family alignment from preference pairs; RLHF as the legacy path.'],
- ['M25','RLVR & GRPO','🏋️',['M24','M32'],'RL with verifiable rewards — the recipe defining modern post-training.'],
- ['M26','Synthetic data & distillation','🧬',['M19'],'Teacher-generated data; distilling reasoning into small models.'],
- ['M27','Inference optimization','⚡',['M21','M15'],'Continuous batching, paged KV cache, speculative decoding.'],
- ['M28','Custom evals & LLM-judge','🧑‍⚖️',['M22','M4'],'Task-specific eval sets; judge biases; eval-driven development.'],
- ['M29','Interpretability basics','🔦',['M15'],'Probing, logit lens, attention visualization.'],
- ['M30','Mixture-of-experts','🎛',['M15','M23'],'Sparse routing — why nearly every frontier model is MoE.'],
- ['M31','Multimodal training','🖼',['M15','M19'],'Vision-language models and fusion approaches.'],
- ['M32','Reasoning & test-time compute','🤔',['M15','M22','F8'],'Long chains of thought, thinking budgets, parallel sampling.'],
- ['M33','RL environments','🏟️',['M25','M28'],'Environments and verifiers — you can\'t reward what you can\'t score.'],
- ['M34','Training agentic models','🏔️',['M25','M33','M30'],'SFT on traces → RLVR → agentic RL in tool environments.'],
- ['M35','Mechanistic interpretability','🔎',['M29'],'SAEs and circuit tracing, crossing into production debugging.'],
- ['M36','Distributed serving','🕸️',['M27','M30'],'Prefill/decode disaggregation and parallelism at scale.'],
-]
-};
-
-// ---------- build node table ----------
-const NODES = [], byId = {};
-BRANCHES.forEach(b=>{
-  RAW[b.k].forEach(r=>{
-    const n = {id:r[0], name:r[1], icon:r[2], pre:r[3], d:r[4], br:b.k, c:b.c};
-    NODES.push(n); byId[n.id] = n;
-  });
-});
-
-// topological level: 1 + max(level of prereqs)
-const memo = {};
-function lvl(id){
-  if (memo[id]) return memo[id];
-  const n = byId[id];
-  memo[id] = n.pre.length ? 1 + Math.max(...n.pre.map(lvl)) : 1;
-  return memo[id];
-}
-NODES.forEach(n=>{ n.level = lvl(n.id); });
-const MAXL = Math.max(...NODES.map(n=>n.level));
+document.getElementById('nav').innerHTML = ttNav('tree');
+if (!TT.state.quiz.started && !TT.totals().resolved) document.getElementById('banner').style.display = '';
 
 // ---------- layout ----------
-const SLOTW = 128, LANE_GAP = 40, ROWH = 138, WRAPH = 92, TOP = 74, MARGIN = 46;
-// group by branch+level, assign slots with wrapping
+const SLOTW = 128, LANE_GAP = 40, ROWH = 146, WRAPH = 98, TOP = 74, MARGIN = 46;
 const groups = {};
 NODES.forEach(n=>{
   const k = n.br + '|' + n.level;
@@ -257,7 +138,6 @@ Object.values(groups).forEach(g=>{
   const ms = MAXSLOT[g[0].br];
   g.forEach((n,i)=>{ n.slot = i % ms; n.wrow = Math.floor(i / ms); n.rowCount = Math.min(g.length - Math.floor(i/ms)*ms, ms); });
 });
-// lane x offsets
 let lx = MARGIN;
 const laneStart = {}, laneWidth = {};
 BRANCHES.forEach(b=>{
@@ -266,7 +146,6 @@ BRANCHES.forEach(b=>{
   lx += laneWidth[b.k] + LANE_GAP;
 });
 const W = lx - LANE_GAP + MARGIN;
-// level y offsets (height = rows needed at that level)
 const levelRows = {};
 for (let L=1; L<=MAXL; L++){
   levelRows[L] = 1;
@@ -285,15 +164,14 @@ const H = cy + 30;
 
 NODES.forEach(n=>{
   const centerOffset = (MAXSLOT[n.br] - n.rowCount) * SLOTW / 2;
-  n.x = laneStart[n.br] + centerOffset + n.slot*SLOTW + SLOTW/2;  // medal center x
-  n.y = levelY[n.level] + n.wrow*WRAPH + 21 + 2;  // medal center y
+  n.x = laneStart[n.br] + centerOffset + n.slot*SLOTW + SLOTW/2;
+  n.y = levelY[n.level] + n.wrow*WRAPH + 21 + 2;
 });
 
 // ---------- render ----------
 const canvas = document.getElementById('canvas');
 canvas.style.width = W+'px'; canvas.style.height = H+'px';
 
-// lane headers
 BRANCHES.forEach(b=>{
   const el = document.createElement('div');
   el.className = 'lane-head';
@@ -303,11 +181,9 @@ BRANCHES.forEach(b=>{
   canvas.appendChild(el);
 });
 
-// edges
 const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
 svg.setAttribute('class','edges'); svg.setAttribute('width',W); svg.setAttribute('height',H);
 canvas.appendChild(svg);
-// lane separator rails
 BRANCHES.slice(1).forEach(b=>{
   const x = laneStart[b.k] - LANE_GAP/2;
   const p = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -322,9 +198,8 @@ const EDGES = [];
 NODES.forEach(n=>n.pre.forEach(p=>EDGES.push([p, n.id])));
 EDGES.forEach(([a,b])=>{
   const na = byId[a], nb = byId[b];
-  const ra = 21, rb = 21;
-  const x1 = na.x, y1 = na.y + ra + 32;   // out the bottom, below label
-  const x2 = nb.x, y2 = nb.y - rb - 5;    // into the top of the medal
+  const x1 = na.x, y1 = na.y + 21 + 42;   // out the bottom, below label+pips
+  const x2 = nb.x, y2 = nb.y - 21 - 5;
   const my = (y1+y2)/2;
   const cross = na.br !== nb.br;
   const p = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -342,23 +217,6 @@ EDGES.forEach(([a,b])=>{
   edgeEls[a+'>'+b] = {p, tip, cross};
 });
 
-// lineage maps
-const anc = {}, desc = {};
-NODES.forEach(n=>{anc[n.id]=new Set(); desc[n.id]=new Set();});
-function collectUp(id,set){ byId[id].pre.forEach(p=>{ if(!set.has(p)){ set.add(p); collectUp(p,set); } }); }
-NODES.forEach(n=>collectUp(n.id, anc[n.id]));
-EDGES.forEach(([a,b])=>{ desc[a].add(b); });
-function collectDown(id,set){ desc[id].forEach(d0=>{}); }
-// full descendants via repeated pass
-NODES.forEach(n=>{
-  const set = new Set(); const stack = [n.id];
-  while (stack.length){
-    const cur = stack.pop();
-    EDGES.forEach(([a,b])=>{ if (a===cur && !set.has(b)){ set.add(b); stack.push(b); } });
-  }
-  n.descAll = set;
-});
-
 const tipEl = document.createElement('div'); tipEl.className='tip'; canvas.appendChild(tipEl);
 
 const nodeEls = {};
@@ -368,12 +226,15 @@ NODES.forEach(n=>{
   el.style.left = (n.x-61)+'px';
   el.style.top = (n.y - 21 - 2)+'px';
   el.style.setProperty('--c', n.c);
-  el.innerHTML = `<div class="medal">${n.icon}</div><div class="nm">${n.name}</div>`;
+  el.innerHTML = `<div class="medal">${n.icon}</div><div class="nm">${n.name}</div>
+    <div class="pips">${Array.from({length:n.maxRank},(_,i)=>'<i></i>').join('')}</div>`;
   canvas.appendChild(el);
   nodeEls[n.id] = el;
 
+  el.addEventListener('click', ()=>openDrawer(n.id));
+
   el.addEventListener('mouseenter', ()=>{
-    const keep = new Set([n.id, ...anc[n.id], ...n.descAll]);
+    const keep = new Set([n.id, ...ANC[n.id], ...DESC[n.id]]);
     NODES.forEach(m=>{
       nodeEls[m.id].classList.toggle('dim', !keep.has(m.id));
       nodeEls[m.id].classList.toggle('lit', keep.has(m.id));
@@ -388,7 +249,10 @@ NODES.forEach(n=>{
     });
     tipEl.style.display='block';
     const needNames = n.pre.map(p=>byId[p].name).join(', ');
-    tipEl.innerHTML = `<b>${n.name}</b><br>${n.d}` + (needNames?`<div class="needs">Unlocked by: ${needNames}</div>`:'<div class="needs">A starting point — no prerequisites.</div>');
+    const r = TT.rankOf(n.id);
+    const rline = TT.resolved(n.id) ? `<div class="needs">Your rank: ${r} of ${n.maxRank}${r? ' — '+n.ranks[r-1]:''}</div>` : '';
+    tipEl.innerHTML = `<b>${n.name}</b><br>${n.d}` + rline +
+      (needNames?`<div class="needs">Unlocked by: ${needNames}</div>`:'<div class="needs">A starting point — no prerequisites.</div>');
     tipEl.style.left = Math.max(8, Math.min(n.x+40, W-266))+'px';
     tipEl.style.top = Math.max(6, n.y-80)+'px';
   });
@@ -407,7 +271,120 @@ NODES.forEach(n=>{
 document.getElementById('legend').innerHTML =
   BRANCHES.map(b=>`<span><span class="sw" style="background:${b.c}"></span>${b.name}</span>`).join('');
 
-// fit-width zoom toggle
+// ---------- progression state on the tree ----------
+function refreshNode(id){
+  const n = byId[id], el = nodeEls[id], r = TT.rankOf(id);
+  el.querySelectorAll('.pips i').forEach((p,i)=>p.classList.toggle('on', i < r));
+  el.classList.toggle('locked', r === 0);
+}
+function refreshAll(){
+  const surveyed = TT.totals().resolved > 0;
+  document.body.classList.toggle('surveyed', surveyed);
+  NODES.forEach(n=>refreshNode(n.id));
+}
+refreshAll();
+
+// ---------- drawer ----------
+const drawer = document.getElementById('drawer');
+const shade = document.getElementById('shade');
+let openId = null;
+
+function srcLabel(e){
+  if (!e) return 'Unmapped — the trial never got to this one. Tick a rank to set it yourself.';
+  if (e.src === 'answered') return 'From your trial answer.';
+  if (e.src === 'inferred') return e.r
+    ? 'Inferred — you claimed a skill this one unlocks, so the tree vouched for you. Correct it if it overreached.'
+    : 'Inferred — a prerequisite was still locked, so this was marked locked too.';
+  return 'Set by hand. The tree respects your edits.';
+}
+
+function openDrawer(id){
+  const n = byId[id];
+  if (openId && nodeEls[openId]) nodeEls[openId].classList.remove('sel');
+  openId = id;
+  nodeEls[id].classList.add('sel');
+  drawer.style.setProperty('--c', n.c);
+  const e = TT.entry(id), r = TT.rankOf(id);
+  const branch = BRANCHES.find(b=>b.k===n.br);
+  const nlink = (pid, done) => {
+    const p = byId[pid];
+    return `<span class="nlink ${done?'done':'todo'}" style="--c:${p.c}" data-go="${pid}">${p.icon} ${p.name}</span>`;
+  };
+
+  drawer.innerHTML = `
+    <button class="dclose" title="close">✕</button>
+    <div class="dhead">
+      <div class="dmedal">${n.icon}</div>
+      <div>
+        <h2>${n.name}</h2>
+        <div class="dsub"><span class="tt-chip" style="--c:${n.c}">${branch.name}</span></div>
+      </div>
+    </div>
+
+    <h4>Codex entry</h4>
+    <p>${n.long}</p>
+
+    <h4>Mastery — ${r} of ${n.maxRank} rank${n.maxRank>1?'s':''}</h4>
+    <div class="ranks">
+      ${n.ranks.map((lbl,i)=>`
+        <div class="rrow ${i < r ? 'on':''}" data-r="${i+1}">
+          <span class="rn">${i+1}</span><span class="box"></span><span class="rl">${lbl}</span>
+        </div>`).join('')}
+    </div>
+    <div class="srcnote">${srcLabel(e)}</div>
+
+    <h4>Leveling up</h4>
+    <p>${n.levelUp}</p>
+
+    ${n.resources.length ? `<h4>Learn more</h4>
+    <ul class="res">${n.resources.map(x=>`<li>📜 <a href="${x.u}" target="_blank" rel="noopener">${x.t}</a></li>`).join('')}</ul>` : ''}
+
+    <h4>Unlocked by</h4>
+    ${n.pre.length ? `<div class="linkrow">${n.pre.map(p=>nlink(p, TT.rankOf(p)>0)).join('')}</div>`
+                   : '<p style="font-style:italic;color:#8a7343">A starting point — no prerequisites.</p>'}
+
+    ${UNLOCKS[id].length ? `<h4>Unlocks</h4>
+    <div class="linkrow">${UNLOCKS[id].map(p=>nlink(p, TT.rankOf(p)>0)).join('')}</div>` : ''}
+  `;
+
+  drawer.querySelector('.dclose').addEventListener('click', closeDrawer);
+  drawer.querySelectorAll('.rrow').forEach(row => row.addEventListener('click', ()=>{
+    const clicked = +row.dataset.r;
+    const cur = TT.rankOf(id);
+    TT.setRank(id, clicked === cur ? clicked - 1 : clicked, 'manual');
+    refreshAll();
+    openDrawer(id);           // re-render with new state
+  }));
+  drawer.querySelectorAll('.nlink').forEach(a => a.addEventListener('click', ()=>{
+    const pid = a.dataset.go;
+    openDrawer(pid);
+    scrollToNode(pid);
+  }));
+
+  drawer.classList.add('open');
+  shade.classList.add('open');
+  history.replaceState(null, '', '#s=' + id);
+}
+
+function closeDrawer(){
+  drawer.classList.remove('open');
+  shade.classList.remove('open');
+  if (openId && nodeEls[openId]) nodeEls[openId].classList.remove('sel');
+  openId = null;
+  history.replaceState(null, '', location.pathname);
+}
+shade.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e=>{ if (e.key==='Escape') closeDrawer(); });
+
+function scrollToNode(id){
+  const n = byId[id];
+  const vp = document.getElementById('viewport');
+  const s = fit ? Math.min(1, (window.innerWidth - 24) / W) : 1;
+  vp.scrollTo({ left: n.x*s - window.innerWidth/2, behavior:'smooth' });
+  window.scrollTo({ top: Math.max(0, n.y*s - window.innerHeight/2 + 140), behavior:'smooth' });
+}
+
+// ---------- zoom ----------
 const vp = document.getElementById('viewport'), btn = document.getElementById('zoomBtn');
 let fit = true;
 function applyZoom(){
@@ -418,6 +395,10 @@ function applyZoom(){
 btn.addEventListener('click', ()=>{ fit = !fit; applyZoom(); });
 window.addEventListener('resize', applyZoom);
 applyZoom();
+
+// deep link: index.html#s=R11 opens the codex entry
+const m = location.hash.match(/^#s=([A-Z]\d+)$/);
+if (m && byId[m[1]]){ openDrawer(m[1]); setTimeout(()=>scrollToNode(m[1]), 60); }
 </script>
 </body>
 </html>

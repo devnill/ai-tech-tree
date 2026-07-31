@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The AI Tech Tree — Character Sheet</title>
+<link rel="stylesheet" href="tt.css">
+<style>
+  main { max-width: 860px; margin: 30px auto 60px; padding: 0 16px; display:flex; flex-direction:column; gap:20px; }
+
+  .sheethead { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  .sigil {
+    width: 84px; height: 84px; border-radius: 50%; flex:none;
+    background: radial-gradient(circle at 35% 30%, #fdf7e6, #efe2c0 60%, #e2d1a6);
+    border: 3px solid #8c6d3f; outline: 1px solid #b49a63; outline-offset: 3px;
+    display:flex; align-items:center; justify-content:center; font-size: 38px;
+    box-shadow: 0 3px 8px rgba(80,60,20,.35);
+  }
+  .titleblock h2 { font-size: 26px; letter-spacing:.02em; }
+  .titleblock .tagline { font-size: 13.5px; color:#6d5a34; font-style:italic; margin-top:4px; }
+
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin-left:auto; }
+  .stat { text-align:center; padding: 8px 16px; border:1px solid #b49a63; border-radius:6px; background:#fdf7e6; min-width:92px; }
+  .stat .v { font-size: 22px; font-weight:700; }
+  .stat .l { font-size: 10.5px; letter-spacing:.12em; text-transform:uppercase; color:#8a7343; margin-top:2px; }
+
+  h3.sect { font-size: 13px; letter-spacing:.18em; text-transform:uppercase; color:#6d5a34;
+            border-bottom:1px solid #d8c69c; padding-bottom:6px; margin-bottom:14px; }
+
+  /* branch meters */
+  .meter { display:grid; grid-template-columns: 168px 1fr 86px; gap:12px; align-items:center; margin-bottom:12px; }
+  .meter .bn { font-size: 13.5px; font-weight:700; color: var(--c); text-align:right; }
+  .meter .bn small { display:block; font-weight:400; font-size:11px; color:#8a7343; font-style:italic; }
+  .meter .rail { height: 16px; background:#efe2c0; border:1px solid #cbb98f; border-radius: 5px; position:relative; overflow:hidden; }
+  .meter .fill { position:absolute; inset:0 auto 0 0; background: var(--c); border-radius: 4px;
+                 border-right: 2px solid #fbf3dd; transition: width .6s cubic-bezier(.2,.8,.3,1); }
+  .meter .fill.faint { opacity:.28; border-right:none; }
+  .meter .val { font-size: 12.5px; color:#4a3a20; font-variant-numeric: tabular-nums; }
+  .meter .pips-note { font-size:11px; }
+  @media (max-width: 640px){ .meter { grid-template-columns: 1fr; gap:4px; } .meter .bn { text-align:left; } }
+
+  /* prose */
+  .prose p { font-size: 15px; line-height: 1.65; margin-bottom: 13px; }
+  .prose p:last-child { margin-bottom: 0; }
+
+  .skillchips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  a.schip { display:inline-flex; align-items:center; gap:7px; text-decoration:none;
+            font-size: 12.5px; color:#3a2c17; padding: 6px 12px 6px 8px;
+            border:1px solid var(--c); border-radius: 20px; background:#fdf7e6; }
+  a.schip:hover { background:#fff9e8; transform: translateY(-1px); }
+  a.schip .em { font-size:15px; }
+  a.schip .r { font-size:10.5px; color:#8a7343; }
+
+  .actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .unmapped-note { font-size: 12.5px; color:#8a7343; font-style: italic; text-align:center; }
+
+  .empty { text-align:center; padding: 50px 20px; }
+  .empty h2 { margin-bottom:10px; }
+  .empty p { color:#6d5a34; margin-bottom:20px; }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1>Character Sheet</h1>
+  <div class="sub">What the trial revealed — strengths, gaps, and where the next unlock is hiding.</div>
+  <div id="nav"></div>
+</header>
+
+<main id="main"></main>
+
+<footer class="tt-foot">Numbers are estimates from your answers; click any skill on the tree to correct the record by hand.</footer>
+
+<script src="skills-data.js"></script>
+<script src="app.js"></script>
+<script>
+document.getElementById('nav').innerHTML = ttNav('results');
+const main = document.getElementById('main');
+
+const t = TT.totals();
+if (!TT.state.quiz.started && !t.resolved){
+  main.innerHTML = `<div class="tt-card empty">
+    <h2>No deeds on record.</h2>
+    <p>The character sheet writes itself from your trial answers — and you haven't stood trial yet.</p>
+    <a class="tt-btn dark" href="quiz.html">Take the aptitude trial</a>
+  </div>`;
+} else {
+  render();
+}
+
+function render(){
+  const goal = TT.goal;
+  const bs = TT.branchStats();
+  const branches = Object.values(bs);
+  const pct = t.pct;
+
+  // ---- title assembly ----
+  const EPITHETS = ['Fresh-Spawned','Apprentice','Journeyman','Adept','Master'];
+  const tier = pct < .08 ? 0 : pct < .25 ? 1 : pct < .45 ? 2 : pct < .7 ? 3 : 4;
+  const CLASSES = { dev:'Artificer', data:'Alchemist', analyst:'Strategist', research:'Scribe', ops:'Mechanist', curious:'Wanderer' };
+  const cls = goal ? CLASSES[goal.k] : 'Wanderer';
+  const title = `${EPITHETS[tier]} ${cls}`;
+
+  // ---- prose snippets ----
+  const OPENERS = [
+    ["You're at the base of the tree looking up — which is the one spot with the best view of everything left to unlock.",
+     "Everything above you is still fog-of-war. Good news: the early nodes are cheap, and they cascade."],
+    ["You've cleared the entry rungs and it shows: the fundamentals are in, and the interesting branches are starting to open.",
+     "Solid footing on the lower tree. From here the unlocks come faster than you'd think — the roots feed everything."],
+    ["A proper mid-tree build: real skills, real reps, and enough map knowledge to know what you're skipping.",
+     "You've put honest points into this tree. The middle tiers are where compounding kicks in, and you're in them."],
+    ["This is a serious build. Most of the tree is lit, and you're working the branches where mastery actually gets hard.",
+     "Deep into the tree now — what's left mostly requires shipping real things, not reading about them."],
+    ["Near-complete map, high ranks, capstones in reach. At this point you're less a student of the tree and more a maintainer of it.",
+     "The tree is mostly conquered territory. What remains is frontier work — the nodes that move every year."]
+  ];
+
+  const STRONG = {
+    F:"your mental models are doing quiet load-bearing work — every other branch gets cheaper because of it",
+    U:"you've turned everyday AI tools into an actual practice, which is rarer than the marketing implies",
+    P:"you shape context like someone who knows the window is scarce — the craft skill that upgrades everything else",
+    A:"you don't just use agents, you build the cages they run in — 2026's highest-leverage engineering lane",
+    R:"you know how to make machines find the right thing, which is quietly half of every AI product that works",
+    M:"you understand the machinery under the hood, which turns everyone else's magic into your engineering"
+  };
+  const WEAK = {
+    F:"a few missing mental models there tend to tax everything downstream — cheap points, big returns",
+    U:"the everyday tooling is your blind spot, and it's the fastest XP in the entire tree",
+    P:"sharper context craft would compound across every branch you already have",
+    A:"the agent lane is where the industry moved; even two or three nodes there change what you can delegate",
+    R:"retrieval is thin, and it gates most 'AI over your own data' ambitions",
+    M:"the model internals are dark to you — fine for many builds, limiting for a few specific ones"
+  };
+
+  const spread = Math.max(...branches.map(b=>b.pct)) - Math.min(...branches.map(b=>b.pct));
+  const sorted = [...branches].sort((a,b)=>b.pct-a.pct);
+  const top = sorted[0], second = sorted[1], low = sorted[sorted.length-1];
+
+  const CAPSTONES = ['U18','A28','R24','M34'];
+  const capsEarned = CAPSTONES.filter(id=>TT.rankOf(id)>0);
+
+  const pick = (arr, seed) => arr[seed % arr.length];
+  const seed = t.pts + t.achieved;
+
+  const paras = [];
+  paras.push(pick(OPENERS[tier], seed) + ` You've earned <b>${t.achieved}</b> of ${t.nodes} skills and <b>${t.pts}</b> of ${TOTAL_RANKS} total ranks${capsEarned.length ? `, including ${capsEarned.length} capstone${capsEarned.length>1?'s':''} (${capsEarned.map(id=>byId[id].name).join(', ')})` : ''}.`);
+
+  if (t.achieved > 0){
+    let s = `Your strongest lane is <b style="color:${top.c}">${top.name}</b> — ${STRONG[top.k]}.`;
+    if (second && second.pct > 0.05 && top.pct - second.pct < 0.12)
+      s += ` <b style="color:${second.c}">${second.name}</b> runs a close second, which makes for a sturdy two-branch build.`;
+    paras.push(s);
+    if (low.pct < top.pct - 0.05)
+      paras.push(`The thinnest branch is <b style="color:${low.c}">${low.name}</b>: ${WEAK[low.k]}.`);
+    paras.push(spread < 0.15
+      ? `It's an even-keeled build — no branch left badly behind. Generalists age well in this tree; the cross-branch unlocks come to you for free.`
+      : `It's a spiky build — deep where you care, dark where you don't. Nothing wrong with that, but watch the cross-branch prerequisites: several late-game nodes want points from lanes you've been skipping.`);
+  }
+
+  if (goal){
+    const front = TT.frontier(4), grow = TT.growth(3);
+    let g = `${goal.icon} As a <b>${goal.name.toLowerCase()}</b> build: ${goal.angle}`;
+    paras.push(g);
+    if (front.length || grow.length){
+      let n = '';
+      if (front.length) n += `Next unlocks worth taking — prerequisites already met: ${front.map(f=>`<b>${f.name}</b>`).join(', ')}.`;
+      if (grow.length) n += ` Cheapest rank-ups in skills you've already started: ${grow.map(f=>`<b>${f.name}</b>`).join(', ')}.`;
+      paras.push(n);
+    }
+  }
+
+  // ---- meters ----
+  const meters = branches.map(b => {
+    const w = Math.round(100 * b.pct);
+    const unknown = b.n - b.resolved;
+    return `<div class="meter" style="--c:${b.c}">
+      <div class="bn">${b.name}<small>${b.achieved}/${b.n} skills · ${unknown ? unknown + ' unmapped' : 'fully mapped'}</small></div>
+      <div class="rail" title="${b.pts} of ${b.max} ranks">
+        <div class="fill" style="width:${Math.max(w, b.pts?2:0)}%"></div>
+      </div>
+      <div class="val">${b.pts} / ${b.max} <span style="color:#8a7343">(${w}%)</span></div>
+    </div>`;
+  }).join('');
+
+  // ---- focus chips ----
+  const front = TT.frontier(5), grow = TT.growth(4);
+  const chip = n => `<a class="schip" style="--c:${n.c}" href="index.html#s=${n.id}">
+      <span class="em">${n.icon}</span>${n.name}
+      <span class="r">${TT.rankOf(n.id) ? 'rank '+TT.rankOf(n.id)+'→'+(TT.rankOf(n.id)+1) : 'unlock'}</span></a>`;
+
+  main.innerHTML = `
+    <div class="tt-card">
+      <div class="sheethead">
+        <div class="sigil">${goal ? goal.icon : '🧭'}</div>
+        <div class="titleblock">
+          <h2>${title}</h2>
+          <div class="tagline">${goal ? goal.blurb : 'Unaligned — take the trial to pick a calling.'}</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="v">${t.achieved}</div><div class="l">skills earned</div></div>
+          <div class="stat"><div class="v">${t.pts}</div><div class="l">of ${TOTAL_RANKS} ranks</div></div>
+          <div class="stat"><div class="v">${capsEarned.length}/${CAPSTONES.length}</div><div class="l">capstones</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tt-card">
+      <h3 class="sect">Branch proficiencies</h3>
+      ${meters}
+    </div>
+
+    <div class="tt-card prose">
+      <h3 class="sect">The read</h3>
+      ${paras.map(p=>`<p>${p}</p>`).join('')}
+      ${(front.length || grow.length) ? `<div class="skillchips">${front.concat(grow).map(chip).join('')}</div>` : ''}
+    </div>
+
+    ${t.unknown ? `<div class="unmapped-note">${t.unknown} skill${t.unknown>1?'s':''} still unmapped — the sheet firms up the more you answer.</div>` : ''}
+
+    <div class="actions">
+      <a class="tt-btn dark" href="index.html">See it on the tree</a>
+      ${t.unknown || NODES.some(n=>{const e=TT.entry(n.id);return e&&e.src==='inferred';}) ? '<a class="tt-btn" href="quiz.html?more=1">Answer more questions</a>' : ''}
+      <button class="tt-btn ghost" id="retakeBtn">Retake the trial</button>
+    </div>`;
+
+  document.getElementById('retakeBtn').addEventListener('click', () => {
+    if (confirm('Reset all progress and retake the trial?')){ TT.reset(); location.href='quiz.html'; }
+  });
+}
+</script>
+</body>
+</html>

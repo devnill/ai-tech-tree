@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The AI Tech Tree — Aptitude Trial</title>
+<link rel="stylesheet" href="tt.css">
+<style>
+  main { max-width: 720px; margin: 34px auto 60px; padding: 0 16px; }
+
+  .progress { margin-bottom: 22px; }
+  .progress .lbl { display:flex; justify-content:space-between; font-size:12px; color:#8a7343; font-style:italic; margin-bottom:5px; }
+  .progress .rail { height: 10px; border:1px solid #b49a63; border-radius: 6px; background:#efe2c0; overflow:hidden; }
+  .progress .fill { height:100%; background: linear-gradient(90deg,#8c6d3f,#5b4426); border-radius: 6px 0 0 6px; transition: width .35s; }
+
+  .qhead { display:flex; align-items:center; gap:14px; margin-bottom: 6px; }
+  .qhead .medal {
+    width: 52px; height: 52px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 35% 30%, #fdf7e6, #efe2c0 60%, #e2d1a6);
+    border: 2.5px solid var(--c,#8c6d3f); outline: 1px solid #b49a63; outline-offset: 2px;
+    display:flex; align-items:center; justify-content:center; font-size: 24px;
+    box-shadow: 0 2px 5px rgba(80,60,20,.32);
+  }
+  .qhead h2 { font-size: 21px; }
+  .qdesc { font-size: 13.5px; color:#6d5a34; font-style: italic; margin: 8px 0 18px; }
+  .prompt { font-size: 14px; margin-bottom: 12px; }
+
+  .opts { display:flex; flex-direction:column; gap:9px; }
+  .opt {
+    text-align:left; font-family:inherit; font-size:14px; line-height:1.45; cursor:pointer;
+    padding: 11px 14px 11px 12px; border:1px solid #b49a63; border-radius:6px;
+    background:#fdf7e6; color:#3a2c17; display:flex; gap:10px; align-items:baseline;
+    transition: transform .08s, background .12s;
+  }
+  .opt:hover { background:#fff9e8; transform: translateX(3px); border-color: var(--c,#8c6d3f); }
+  .opt .pip { font-size:11px; color:#8a7343; flex:none; width:58px; letter-spacing:.06em; }
+  .opt.zero .pip { color:#a08c5e; }
+
+  .goalgrid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .goal {
+    text-align:left; font-family:inherit; cursor:pointer; padding:14px 16px;
+    border:1px solid #b49a63; border-radius:8px; background:#fdf7e6;
+  }
+  .goal:hover { background:#fff9e8; border-color:#8c6d3f; transform: translateY(-2px); }
+  .goal .gi { font-size:22px; }
+  .goal .gn { font-weight:700; margin:4px 0 3px; }
+  .goal .gb { font-size:12.5px; color:#6d5a34; line-height:1.4; }
+  @media (max-width: 560px){ .goalgrid { grid-template-columns: 1fr; } }
+
+  .below { display:flex; justify-content:space-between; align-items:center; margin-top:18px; }
+  .skipnote { font-size:12px; color:#8a7343; font-style:italic; }
+
+  .donecard { text-align:center; }
+  .donecard h2 { margin-bottom: 10px; }
+  .donecard p { font-size:14px; color:#6d5a34; margin-bottom:18px; }
+  .donecard .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1>The Aptitude Trial</h1>
+  <div class="sub">A short interrogation — answer honestly and the tree fills itself in around you.</div>
+  <div id="nav"></div>
+</header>
+
+<main>
+  <div class="progress" id="progress" style="display:none">
+    <div class="lbl"><span id="pLeft"></span><span id="pRight"></span></div>
+    <div class="rail"><div class="fill" id="pFill" style="width:0%"></div></div>
+  </div>
+  <div class="tt-card" id="card"></div>
+  <div class="below" id="below" style="display:none">
+    <span class="skipnote">Answers save as you go — leave and come back whenever.</span>
+    <button class="tt-btn ghost" id="skipBtn">Skip to my results →</button>
+  </div>
+</main>
+
+<footer class="tt-foot">Checkpoint logic at work: claiming a skill vouches for everything that unlocked it.</footer>
+
+<script src="skills-data.js"></script>
+<script src="app.js"></script>
+<script>
+document.getElementById('nav').innerHTML = ttNav('quiz');
+
+const MORE = new URLSearchParams(location.search).has('more');
+const RETAKE = new URLSearchParams(location.search).has('retake');
+if (RETAKE) TT.reset();
+
+const CAP = 30;                    // hard ceiling on questions per sitting
+let askedThisSitting = 0;
+let lastBranch = null;
+let confirming = false;            // true once we're re-checking inferred guesses (?more mode)
+
+const card = document.getElementById('card');
+const below = document.getElementById('below');
+const progress = document.getElementById('progress');
+
+// A rotating cast of "nope" options, so the trial doesn't drone.
+const ZEROES = ['Not my world yet', 'Haven’t crossed paths with it', 'News to me', 'Not yet — someday, maybe'];
+let zi = 0;
+
+function pickNext(){
+  let pool = NODES.filter(n => !TT.resolved(n.id));
+  confirming = false;
+  if (!pool.length && MORE){
+    pool = NODES.filter(n => { const e = TT.entry(n.id); return e && e.src === 'inferred'; });
+    confirming = true;
+  }
+  if (!pool.length) return null;
+  const g = TT.goal;
+  let best = null, bs = -Infinity;
+  pool.forEach(n => {
+    let score;
+    if (confirming){
+      // check the boldest guesses first
+      score = TT.entry(n.id).r + (g ? g.w[n.br] : 1);
+    } else {
+      const ua = [...ANC[n.id]].filter(a => !TT.resolved(a)).length;
+      const ud = [...DESC[n.id]].filter(d => !TT.resolved(d)).length;
+      const info = Math.min(ua, ud) * 2 + Math.max(ua, ud) * 0.35;   // binary-search the DAG
+      const w = g ? g.w[n.br] : 1;
+      score = info * (0.75 + 0.5 * w) - (n.br === lastBranch ? 0.8 : 0);
+    }
+    if (score > bs || (score === bs && best && n.id < best.id)){ bs = score; best = n; }
+  });
+  return best;
+}
+
+function updateProgress(){
+  const t = TT.totals();
+  progress.style.display = '';
+  document.getElementById('pFill').style.width = Math.round(100 * t.resolved / t.nodes) + '%';
+  document.getElementById('pLeft').textContent = `${t.resolved} of ${t.nodes} skills mapped`;
+  const est = Math.max(0, Math.min(CAP - askedThisSitting, Math.ceil(t.unknown / 5)));
+  document.getElementById('pRight').textContent = t.unknown === 0 ? 'fully mapped' : `~${est} question${est===1?'':'s'} to go`;
+}
+
+function showGoal(){
+  progress.style.display = 'none';
+  below.style.display = 'none';
+  card.innerHTML = `
+    <h2 style="margin-bottom:6px">First — what are you trying to get out of AI?</h2>
+    <p class="qdesc">No wrong answers. This just tunes which corners of the tree the trial pokes at, and what your character sheet recommends.</p>
+    <div class="goalgrid">` +
+    GOALS.map(g => `
+      <button class="goal" data-k="${g.k}">
+        <span class="gi">${g.icon}</span>
+        <div class="gn">${g.name}</div>
+        <div class="gb">${g.blurb}</div>
+      </button>`).join('') + `
+    </div>`;
+  card.querySelectorAll('.goal').forEach(b => b.addEventListener('click', () => {
+    TT.state.goal = b.dataset.k; TT.save();
+    next();
+  }));
+}
+
+function showQuestion(n){
+  below.style.display = '';
+  updateProgress();
+  const zero = ZEROES[zi++ % ZEROES.length];
+  const confirmNote = confirming
+    ? `<p class="qdesc" style="margin-top:-8px">The tree guessed at this one from your other answers — set the record straight.</p>` : '';
+  card.innerHTML = `
+    <div class="qhead" style="--c:${n.c}">
+      <div class="medal">${n.icon}</div>
+      <div>
+        <span class="tt-chip" style="--c:${n.c}">${BRANCHES.find(b=>b.k===n.br).name}</span>
+        <h2>${n.name}</h2>
+      </div>
+    </div>
+    <p class="qdesc">${n.d}</p>
+    ${confirmNote}
+    <p class="prompt">Which sounds most like you?</p>
+    <div class="opts">
+      <button class="opt zero" data-r="0"><span class="pip">—</span>${zero}</button>` +
+      n.ranks.map((lbl, i) => `
+      <button class="opt" data-r="${i+1}" style="--c:${n.c}">
+        <span class="pip">rank ${i+1}/${n.maxRank}</span>You ${lbl.charAt(0).toLowerCase()+lbl.slice(1)}</button>`).join('') + `
+    </div>`;
+  card.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+    TT.answer(n.id, +b.dataset.r);
+    lastBranch = n.br;
+    askedThisSitting++;
+    next();
+  }));
+}
+
+function finish(skipped){
+  TT.state.quiz.done = true;
+  TT.state.quiz.skipped = !!skipped;
+  TT.save();
+  location.href = 'results.html';
+}
+
+function showAlreadyDone(){
+  const t = TT.totals();
+  progress.style.display = 'none'; below.style.display = 'none';
+  card.innerHTML = `
+    <div class="donecard">
+      <h2>You’ve already stood trial.</h2>
+      <p>${t.achieved} skills earned, ${t.unknown ? t.unknown + ' still unmapped' : 'the whole tree mapped'}.
+         Refine the picture, or wipe the slate and start over.</p>
+      <div class="row">
+        <a class="tt-btn dark" href="results.html">See my character sheet</a>
+        ${t.unknown || NODES.some(n=>{const e=TT.entry(n.id);return e&&e.src==='inferred';})
+          ? '<a class="tt-btn" href="quiz.html?more=1">Answer more questions</a>' : ''}
+        <button class="tt-btn ghost" id="retakeBtn">Retake from scratch</button>
+      </div>
+    </div>`;
+  document.getElementById('retakeBtn').addEventListener('click', () => {
+    if (confirm('Reset all progress and retake the trial?')){ TT.reset(); location.href = 'quiz.html'; }
+  });
+}
+
+function next(){
+  if (!TT.state.goal){ showGoal(); return; }
+  if (askedThisSitting >= CAP){ finish(false); return; }
+  const n = pickNext();
+  if (!n){ finish(false); return; }
+  TT.state.quiz.started = true; TT.save();
+  showQuestion(n);
+}
+
+document.getElementById('skipBtn').addEventListener('click', () => finish(true));
+
+if (TT.state.quiz.done && !MORE && !RETAKE) showAlreadyDone();
+else next();
+</script>
+</body>
+</html>
