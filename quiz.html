@@ -30,11 +30,18 @@
     text-align:left; font-family:inherit; font-size:14px; line-height:1.45; cursor:pointer;
     padding: 11px 14px 11px 12px; border:1px solid #b49a63; border-radius:6px;
     background:#fdf7e6; color:#3a2c17; display:flex; gap:10px; align-items:baseline;
-    transition: transform .08s, background .12s;
+    transition: transform .08s, background .12s; user-select:none;
   }
   .opt:hover { background:#fff9e8; transform: translateX(3px); border-color: var(--c,#8c6d3f); }
   .opt .pip { font-size:11px; color:#8a7343; flex:none; width:58px; letter-spacing:.06em; }
-  .opt.zero .pip { color:#a08c5e; }
+  .opt .box { flex:none; width:15px; height:15px; border-radius:3px; border:1.5px solid var(--c,#8c6d3f);
+              background:transparent; position:relative; top:2px; }
+  .opt.on { background:#fff9e8; border-color: var(--c,#8c6d3f); }
+  .opt.on .box { background: var(--c,#8c6d3f); }
+  .opt.on .box::after { content:'✓'; color:#fbf3dd; font-size:11px; position:absolute; top:-2.5px; left:2px; }
+  .qactions { display:flex; gap:10px; margin-top:16px; align-items:center; }
+  .qactions .spacer { flex:1; font-size:11.5px; color:#8a7343; font-style:italic; }
+  #confirmBtn:disabled { opacity:.45; cursor:default; }
 
   .goalgrid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
   .goal {
@@ -161,6 +168,9 @@ function showQuestion(n){
   const zero = ZEROES[zi++ % ZEROES.length];
   const confirmNote = confirming
     ? `<p class="qdesc" style="margin-top:-8px">The tree guessed at this one from your other answers — set the record straight.</p>` : '';
+  const prior = TT.entry(n.id);        // pre-tick the tree's guess in confirm mode
+  const mask = prior && prior.m ? prior.m.slice(0, n.maxRank) : Array.from({length:n.maxRank}, ()=>false);
+
   card.innerHTML = `
     <div class="qhead" style="--c:${n.c}">
       <div class="medal">${n.icon}</div>
@@ -171,19 +181,34 @@ function showQuestion(n){
     </div>
     <p class="qdesc">${n.d}</p>
     ${confirmNote}
-    <p class="prompt">Which sounds most like you?</p>
-    <div class="opts">
-      <button class="opt zero" data-r="0"><span class="pip">—</span>${zero}</button>` +
+    <p class="prompt">Tick everything that's true — gaps are allowed. You might run the thing in production and still owe rank 1 some reading.</p>
+    <div class="opts">` +
       n.ranks.map((lbl, i) => `
-      <button class="opt" data-r="${i+1}" style="--c:${n.c}">
-        <span class="pip">rank ${i+1}/${n.maxRank}</span>You ${lbl.charAt(0).toLowerCase()+lbl.slice(1)}</button>`).join('') + `
+      <div class="opt ${mask[i]?'on':''}" data-i="${i}" style="--c:${n.c}" role="checkbox" aria-checked="${mask[i]}" tabindex="0">
+        <span class="pip">rank ${i+1}/${n.maxRank}</span><span class="box"></span>You ${lbl.charAt(0).toLowerCase()+lbl.slice(1)}</div>`).join('') + `
+    </div>
+    <div class="qactions">
+      <button class="tt-btn ghost" id="noneBtn">${zero}</button>
+      <span class="spacer"></span>
+      <button class="tt-btn dark" id="confirmBtn" ${mask.some(Boolean)?'':'disabled'}>That's me →</button>
     </div>`;
-  card.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
-    TT.answer(n.id, +b.dataset.r);
-    lastBranch = n.br;
-    askedThisSitting++;
-    next();
-  }));
+
+  const confirmBtn = card.querySelector('#confirmBtn');
+  const submit = m => { TT.answer(n.id, m); lastBranch = n.br; askedThisSitting++; next(); };
+
+  card.querySelectorAll('.opt').forEach(el => {
+    const flip = () => {
+      const i = +el.dataset.i;
+      mask[i] = !mask[i];
+      el.classList.toggle('on', mask[i]);
+      el.setAttribute('aria-checked', mask[i]);
+      confirmBtn.disabled = !mask.some(Boolean);
+    };
+    el.addEventListener('click', flip);
+    el.addEventListener('keydown', e => { if (e.key===' '||e.key==='Enter'){ e.preventDefault(); flip(); } });
+  });
+  card.querySelector('#noneBtn').addEventListener('click', () => submit(mask.map(()=>false)));
+  confirmBtn.addEventListener('click', () => submit(mask));
 }
 
 function finish(skipped){

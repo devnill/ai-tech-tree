@@ -249,8 +249,9 @@ NODES.forEach(n=>{
     });
     tipEl.style.display='block';
     const needNames = n.pre.map(p=>byId[p].name).join(', ');
-    const r = TT.rankOf(n.id);
-    const rline = TT.resolved(n.id) ? `<div class="needs">Your rank: ${r} of ${n.maxRank}${r? ' — '+n.ranks[r-1]:''}</div>` : '';
+    const r = TT.rankOf(n.id), mm = TT.maskOf(n.id);
+    const hi = mm.lastIndexOf(true);
+    const rline = TT.resolved(n.id) ? `<div class="needs">Your ranks: ${r} of ${n.maxRank}${hi>=0? ' — up to "'+n.ranks[hi]+'"':''}</div>` : '';
     tipEl.innerHTML = `<b>${n.name}</b><br>${n.d}` + rline +
       (needNames?`<div class="needs">Unlocked by: ${needNames}</div>`:'<div class="needs">A starting point — no prerequisites.</div>');
     tipEl.style.left = Math.max(8, Math.min(n.x+40, W-266))+'px';
@@ -273,9 +274,9 @@ document.getElementById('legend').innerHTML =
 
 // ---------- progression state on the tree ----------
 function refreshNode(id){
-  const n = byId[id], el = nodeEls[id], r = TT.rankOf(id);
-  el.querySelectorAll('.pips i').forEach((p,i)=>p.classList.toggle('on', i < r));
-  el.classList.toggle('locked', r === 0);
+  const el = nodeEls[id], m = TT.maskOf(id);
+  el.querySelectorAll('.pips i').forEach((p,i)=>p.classList.toggle('on', !!m[i]));
+  el.classList.toggle('locked', TT.rankOf(id) === 0);
 }
 function refreshAll(){
   const surveyed = TT.totals().resolved > 0;
@@ -304,7 +305,7 @@ function openDrawer(id){
   openId = id;
   nodeEls[id].classList.add('sel');
   drawer.style.setProperty('--c', n.c);
-  const e = TT.entry(id), r = TT.rankOf(id);
+  const e = TT.entry(id), r = TT.rankOf(id), m = TT.maskOf(id);
   const branch = BRANCHES.find(b=>b.k===n.br);
   const nlink = (pid, done) => {
     const p = byId[pid];
@@ -327,7 +328,7 @@ function openDrawer(id){
     <h4>Mastery — ${r} of ${n.maxRank} rank${n.maxRank>1?'s':''}</h4>
     <div class="ranks">
       ${n.ranks.map((lbl,i)=>`
-        <div class="rrow ${i < r ? 'on':''}" data-r="${i+1}">
+        <div class="rrow ${m[i] ? 'on':''}" data-i="${i}">
           <span class="rn">${i+1}</span><span class="box"></span><span class="rl">${lbl}</span>
         </div>`).join('')}
     </div>
@@ -349,11 +350,9 @@ function openDrawer(id){
 
   drawer.querySelector('.dclose').addEventListener('click', closeDrawer);
   drawer.querySelectorAll('.rrow').forEach(row => row.addEventListener('click', ()=>{
-    const clicked = +row.dataset.r;
-    const cur = TT.rankOf(id);
-    TT.setRank(id, clicked === cur ? clicked - 1 : clicked, 'manual');
+    TT.toggleRank(id, +row.dataset.i);   // each rank is its own checkbox — gaps allowed
     refreshAll();
-    openDrawer(id);           // re-render with new state
+    openDrawer(id);                      // re-render with new state
   }));
   drawer.querySelectorAll('.nlink').forEach(a => a.addEventListener('click', ()=>{
     const pid = a.dataset.go;

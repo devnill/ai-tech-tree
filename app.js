@@ -6,7 +6,8 @@ const TT = (() => {
 
   const blank = () => ({
     goal: null,                 // GOALS key
-    ranks: {},                  // id -> {r: 0..maxRank, src: 'answered'|'inferred'|'manual'}
+    // id -> {r: score (# ranks held), m: [bool per rank] (gaps allowed), src: 'answered'|'inferred'|'manual'}
+    ranks: {},
     quiz: { started:false, done:false, asked:[], skipped:false },
     updated: null
   });
@@ -16,6 +17,12 @@ const TT = (() => {
     const raw = localStorage.getItem(KEY);
     if (raw) state = Object.assign(blank(), JSON.parse(raw));
   } catch (e) { /* private mode etc. — run in-memory */ }
+
+  // migrate pre-mask entries (scalar rank -> contiguous mask)
+  Object.keys(state.ranks).forEach(id => {
+    const e = state.ranks[id];
+    if (!e.m && byId[id]) e.m = Array.from({length: byId[id].maxRank}, (_,i) => i < e.r);
+  });
 
   function save(){
     state.updated = new Date().toISOString();
@@ -27,19 +34,39 @@ const TT = (() => {
   const entry = id => state.ranks[id] || null;
   const rankOf = id => (state.ranks[id] ? state.ranks[id].r : 0);
   const resolved = id => !!state.ranks[id];
+  const maskOf = id => {
+    const e = state.ranks[id];
+    return e && e.m ? e.m : Array.from({length: byId[id].maxRank}, () => false);
+  };
 
-  function setRank(id, r, src){
-    r = Math.max(0, Math.min(byId[id].maxRank, r));
-    state.ranks[id] = { r, src };
+  const contiguous = (id, r) => Array.from({length: byId[id].maxRank}, (_,i) => i < r);
+
+  // Set the full mask (array of booleans, gaps allowed). Score = boxes held.
+  function setMask(id, m, src){
+    m = m.slice(0, byId[id].maxRank);
+    while (m.length < byId[id].maxRank) m.push(false);
+    state.ranks[id] = { r: m.filter(Boolean).length, m, src };
     save();
   }
 
-  // Answer a quiz question. Checkpoint inference over the prereq DAG:
+  // Toggle a single rank checkbox by hand (drawer).
+  function toggleRank(id, idx){
+    const m = maskOf(id).slice();
+    m[idx] = !m[idx];
+    setMask(id, m, 'manual');
+  }
+
+  // Answer a quiz question with a mask of ticked rank statements (or all-false = none).
+  // Checkpoint inference over the prereq DAG:
   //  - any real experience implies the ancestors that unlocked it,
   //  - no contact implies the descendants are still locked.
-  function answer(id, r){
+  function answer(id, m){
     const n = byId[id];
-    state.ranks[id] = { r, src: 'answered' };
+    if (typeof m === 'number') m = contiguous(id, m);   // tolerate old callers
+    m = m.slice(0, n.maxRank);
+    while (m.length < n.maxRank) m.push(false);
+    const r = m.filter(Boolean).length;
+    state.ranks[id] = { r, m, src: 'answered' };
     if (!state.quiz.asked.includes(id)) state.quiz.asked.push(id);
     const frac = n.maxRank ? r / n.maxRank : 0;
     if (r > 0){
@@ -47,11 +74,11 @@ const TT = (() => {
         if (resolved(a)) return;
         const ma = byId[a].maxRank;
         const ir = Math.max(1, Math.ceil(ma * Math.min(1, frac + 0.34)));
-        state.ranks[a] = { r: ir, src: 'inferred' };
+        state.ranks[a] = { r: ir, m: contiguous(a, ir), src: 'inferred' };
       });
     } else {
       DESC[id].forEach(d => {
-        if (!resolved(d)) state.ranks[d] = { r: 0, src: 'inferred' };
+        if (!resolved(d)) state.ranks[d] = { r: 0, m: contiguous(d, 0), src: 'inferred' };
       });
     }
     save();
@@ -106,7 +133,7 @@ const TT = (() => {
     return cand.slice(0, limit || 5);
   }
 
-  return { state, save, reset, entry, rankOf, resolved, setRank, answer,
+  return { state, save, reset, entry, rankOf, resolved, maskOf, setMask, toggleRank, answer,
            branchStats, totals, frontier, growth,
            get goal(){ return GOALS.find(x => x.k === state.goal) || null; } };
 })();
