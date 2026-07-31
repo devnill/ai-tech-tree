@@ -27,6 +27,26 @@
   h3.sect { font-size: 13px; letter-spacing:.18em; text-transform:uppercase; color:#6d5a34;
             border-bottom:1px solid #d8c69c; padding-bottom:6px; margin-bottom:14px; }
 
+  /* progression ladder */
+  .ladder { display:flex; flex-direction:column-reverse; border:3px solid #8c6d3f; border-radius:8px; overflow:hidden; background:#e6d5ac; }
+  .rung { position:relative; display:flex; align-items:center; gap:14px; padding:12px 18px; flex-wrap:wrap; }
+  .rung:not(:first-child) { border-bottom:2px solid #cdb586; }
+  .rung.locked { opacity:.5; }
+  .rung.climbed { background: rgba(140,109,63,.16); }
+  .rung.current { background: rgba(140,109,63,.3); box-shadow: inset 0 0 0 2px #8c6d3f; }
+  .rung .ri { font-size:24px; width:34px; text-align:center; flex:none; }
+  .rung .rmeta { flex:1; min-width:130px; }
+  .rung .rt { font-weight:700; font-size:14px; }
+  .rung .rr { font-size:11px; color:#8a7343; font-style:italic; margin-top:1px; }
+  .rung .rbar { width:120px; height:10px; border:1px solid #b49a63; border-radius:5px; background:#fbf3dd; overflow:hidden; flex:none; }
+  .rung .rbarfill { height:100%; background:#8c6d3f; }
+  .rung.current .rbarfill { background:#5b4426; }
+  .youhere {
+    font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    background:#2b1d12; color:#f0e4c8; padding:3px 10px; border-radius:10px; white-space:nowrap; flex:none;
+  }
+  @media (max-width:560px){ .rung .rbar { width:100%; order:5; } }
+
   /* branch meters */
   .meter { display:grid; grid-template-columns: 168px 1fr 86px; gap:12px; align-items:center; margin-bottom:12px; }
   .meter .bn { font-size: 13.5px; font-weight:700; color: var(--c); text-align:right; }
@@ -99,6 +119,24 @@ function render(){
   const CLASSES = { dev:'Artificer', data:'Alchemist', analyst:'Strategist', research:'Scribe', ops:'Mechanist', curious:'Wanderer' };
   const cls = goal ? CLASSES[goal.k] : 'Wanderer';
   const title = `${EPITHETS[tier]} ${cls}`;
+
+  // ---- progression ladder ----
+  const TIER_ICONS = ['🌱','📖','🛠️','⚔️','👑'];
+  const TIER_RANGES = [0, .08, .25, .45, .7, 1];
+  const ladderRungs = EPITHETS.map((name, i) => {
+    const lo = TIER_RANGES[i], hi = TIER_RANGES[i+1];
+    const status = i < tier ? 'climbed' : i === tier ? 'current' : 'locked';
+    const fill = i < tier ? 100 : i > tier ? 0 : Math.round(100 * Math.min(1, Math.max(0, (pct - lo) / (hi - lo))));
+    return `<div class="rung ${status}">
+      <div class="ri">${TIER_ICONS[i]}</div>
+      <div class="rmeta">
+        <div class="rt">${name}</div>
+        <div class="rr">${Math.round(lo*100)}–${hi>=1?100:Math.round(hi*100)}% of total ranks</div>
+      </div>
+      <div class="rbar"><div class="rbarfill" style="width:${fill}%"></div></div>
+      ${i === tier ? '<span class="youhere">You are here</span>' : ''}
+    </div>`;
+  }).join('');
 
   // ---- prose snippets ----
   const OPENERS = [
@@ -201,6 +239,11 @@ function render(){
           <div class="stat"><div class="v">${capsEarned.length}/${CAPSTONES.length}</div><div class="l">capstones</div></div>
         </div>
       </div>
+    </div>
+
+    <div class="tt-card">
+      <h3 class="sect">Your climb</h3>
+      <div class="ladder">${ladderRungs}</div>
     </div>
 
     <div class="tt-card">

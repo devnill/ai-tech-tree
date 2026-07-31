@@ -61,9 +61,12 @@
   #shade { position:fixed; inset:0; background:rgba(43,29,18,.25); z-index:90; opacity:0; pointer-events:none; transition:opacity .22s; }
   #shade.open { opacity:1; pointer-events:auto; }
   #drawer {
-    position: fixed; top:0; right:0; height:100%; width: 420px; max-width: 94vw; z-index: 95;
+    position: fixed; top:0; right:0; width: 420px; max-width: 94vw; z-index: 95;
+    height: 100vh; height: 100dvh;
     background: #fbf3dd; border-left: 2px solid #8c6d3f; box-shadow: -10px 0 28px rgba(43,29,18,.4);
-    transform: translateX(105%); transition: transform .25s ease; overflow-y: auto;
+    transform: translateX(105%); transition: transform .25s ease;
+    overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch; touch-action: pan-y;
     padding: 22px 24px 40px;
   }
   #drawer.open { transform: translateX(0); }

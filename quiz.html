@@ -41,7 +41,6 @@
   .opt.on .box::after { content:'✓'; color:#fbf3dd; font-size:11px; position:absolute; top:-2.5px; left:2px; }
   .qactions { display:flex; gap:10px; margin-top:16px; align-items:center; }
   .qactions .spacer { flex:1; font-size:11.5px; color:#8a7343; font-style:italic; }
-  #confirmBtn:disabled { opacity:.45; cursor:default; }
 
   .goalgrid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
   .goal {
@@ -188,13 +187,19 @@ function showQuestion(n){
         <span class="pip">rank ${i+1}/${n.maxRank}</span><span class="box"></span>You ${lbl.charAt(0).toLowerCase()+lbl.slice(1)}</div>`).join('') + `
     </div>
     <div class="qactions">
-      <button class="tt-btn ghost" id="noneBtn">${zero}</button>
       <span class="spacer"></span>
-      <button class="tt-btn dark" id="confirmBtn" ${mask.some(Boolean)?'':'disabled'}>That's me →</button>
+      <button class="tt-btn ${mask.some(Boolean)?'dark':'ghost'}" id="submitBtn">${mask.some(Boolean) ? "That's me →" : zero}</button>
     </div>`;
 
-  const confirmBtn = card.querySelector('#confirmBtn');
+  const submitBtn = card.querySelector('#submitBtn');
   const submit = m => { TT.answer(n.id, m); lastBranch = n.br; askedThisSitting++; next(); };
+
+  function syncSubmitBtn(){
+    const any = mask.some(Boolean);
+    submitBtn.textContent = any ? "That's me →" : zero;
+    submitBtn.classList.toggle('dark', any);
+    submitBtn.classList.toggle('ghost', !any);
+  }
 
   card.querySelectorAll('.opt').forEach(el => {
     const flip = () => {
@@ -202,13 +207,12 @@ function showQuestion(n){
       mask[i] = !mask[i];
       el.classList.toggle('on', mask[i]);
       el.setAttribute('aria-checked', mask[i]);
-      confirmBtn.disabled = !mask.some(Boolean);
+      syncSubmitBtn();
     };
     el.addEventListener('click', flip);
     el.addEventListener('keydown', e => { if (e.key===' '||e.key==='Enter'){ e.preventDefault(); flip(); } });
   });
-  card.querySelector('#noneBtn').addEventListener('click', () => submit(mask.map(()=>false)));
-  confirmBtn.addEventListener('click', () => submit(mask));
+  submitBtn.addEventListener('click', () => submit(mask));
 }
 
 function finish(skipped){
@@ -216,6 +220,24 @@ function finish(skipped){
   TT.state.quiz.skipped = !!skipped;
   TT.save();
   location.href = 'results.html';
+}
+
+function showFullyMapped(){
+  TT.state.quiz.done = true;
+  TT.state.quiz.skipped = false;
+  TT.save();
+  progress.style.display = 'none';
+  below.style.display = 'none';
+  const t = TT.totals();
+  card.innerHTML = `
+    <div class="donecard">
+      <h2>Every skill’s mapped.</h2>
+      <p>${t.achieved} of ${t.nodes} skills earned, and nothing left unanswered right now.
+         Check back later — new skills may show up as the tree grows.</p>
+      <div class="row">
+        <a class="tt-btn dark" href="results.html">See my character sheet</a>
+      </div>
+    </div>`;
 }
 
 function showAlreadyDone(){
@@ -242,7 +264,7 @@ function next(){
   if (!TT.state.goal){ showGoal(); return; }
   if (askedThisSitting >= CAP){ finish(false); return; }
   const n = pickNext();
-  if (!n){ finish(false); return; }
+  if (!n){ showFullyMapped(); return; }
   TT.state.quiz.started = true; TT.save();
   showQuestion(n);
 }
