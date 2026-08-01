@@ -11,7 +11,12 @@
     font-family: inherit; font-size: 12px; padding: 6px 14px; cursor: pointer;
     background: #efe2c0; color: #4a3a20; border: 1px solid #8c6d3f; border-radius: 4px;
   }
-  #viewport { overflow: auto; }
+  @media (max-width: 700px) {
+    /* absolute top-right collides with the centered, wrapping title on narrow screens —
+       drop it into normal flow below the nav instead */
+    #zoomBtn { position: static; display: block; margin: 14px auto 0; }
+  }
+  #viewport { overflow: auto; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
   .canvas { position: relative; margin: 0 auto; }
   svg.edges { position: absolute; inset: 0; pointer-events: none; }
   .lane-head {
@@ -388,7 +393,9 @@ function scrollToNode(id){
 
 // ---------- zoom ----------
 const vp = document.getElementById('viewport'), btn = document.getElementById('zoomBtn');
-let fit = true;
+// On phone-width screens, fitting the whole (wide) tree into view shrinks nodes past legibility —
+// start at actual size there instead and let people pan/scroll; wider screens keep the overview default.
+let fit = !window.matchMedia('(max-width: 700px)').matches;
 function applyZoom(){
   const s = fit ? Math.min(1, (window.innerWidth - 24) / W) : 1;
   canvas.style.zoom = s;
